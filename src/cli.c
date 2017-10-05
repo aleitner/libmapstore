@@ -6,7 +6,7 @@ static inline void noop() {};
 
 #define HELP_TEXT "usage: mapstore [<options>] <command> [<args>]\n\n"         \
     "These are common mapstore commands for various situations:\n\n"           \
-    "  store <config-path>       store file\n"                                 \
+    "  store <data-path>       store file\n"                                 \
     "  retrieve <hash>           retrieve data from map store\n"               \
     "  delete <hash>             delete data from map store\n"                 \
     "  help [cmd]                display help for [cmd]\n\n"                   \
@@ -68,20 +68,50 @@ int main (int argc, char **argv)
         return 0;
     }
 
-
+    /**
+     * Store File
+     */
     if (strcmp(command, "store") == 0) {
         printf("Storing data\n\n");
-        return 1;
+        FILE *data_file = NULL;
+
+        char *data_path = argv[command_index + 1];
+
+        if (!data_path) {
+            printf("Missing first argument: <data-path>\n");
+            status = 1;
+            goto end_store;
+        }
+
+        data_file = fopen(data_path, "r");
+
+        if (!data_file) {
+            printf("Could not access data: %s\n", data_path);
+            status = 1;
+            goto end_store;
+        }
+
+        uint8_t *data_hash = "abc123";
+
+        status = store_data(fileno(data_file), data_hash);
+
+        /* Clean up store command */
+end_store:
+        if (data_file) {
+            fclose(data_file);
+        }
+
+        return status;
     }
 
     if (strcmp(command, "retrieve") == 0) {
         printf("Retrieving data\n\n");
-        return 1;
+        return 0;
     }
 
     if (strcmp(command, "delete") == 0) {
         printf("Deleting data\n\n");
-        return 1;
+        return 0;
     }
 
     return status;

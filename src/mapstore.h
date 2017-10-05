@@ -35,6 +35,11 @@ extern "C" {
 
 #include <inttypes.h>
 
+MAPSTORE_API int store_data(int fd, uint8_t *hash);
+MAPSTORE_API int retrieve_data(uint8_t *hash);
+MAPSTORE_API int delete_data(uint8_t *hash);
+
+
 #ifdef __cplusplus
 }
 #endif
