@@ -1,0 +1,17 @@
+configure
+.DS_Store
+autom4te.cache
+config.status
+config.log
+compile
+depcomp
+install-sh
+missing
+aclocal.m4
+tests/.deps
+src/.deps
+build-aux
+libmapstore.pc
+libtool
+Makefile
+Makefile.in
