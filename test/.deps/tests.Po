@@ -1,1 +1,3 @@
-# dummy
+tests.o: tests.c tests.h
+
+tests.h:
