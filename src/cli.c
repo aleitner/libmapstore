@@ -6,9 +6,11 @@ static inline void noop() {};
 
 #define HELP_TEXT "usage: mapstore [<options>] <command> [<args>]\n\n"         \
     "These are common mapstore commands for various situations:\n\n"           \
-    "  store <data-path>       store file\n"                                 \
+    "  store <data-path>         store file\n"                                 \
     "  retrieve <hash>           retrieve data from map store\n"               \
     "  delete <hash>             delete data from map store\n"                 \
+    "  get-data-info <hash>      retrieve data info from map store\n"          \
+    "  get-store-info            retrieve store info from map store\n"         \
     "  help [cmd]                display help for [cmd]\n\n"                   \
     "options:\n"                                                               \
     "  -h, --help                output usage information\n"                   \
@@ -111,6 +113,16 @@ end_store:
 
     if (strcmp(command, "delete") == 0) {
         printf("Deleting data\n\n");
+        return 0;
+    }
+
+    if (strcmp(command, "get-data-info") == 0) {
+        printf("Getting data info\n\n");
+        return 0;
+    }
+
+    if (strcmp(command, "get-store-info") == 0) {
+        printf("Getting store info\n\n");
         return 0;
     }
 

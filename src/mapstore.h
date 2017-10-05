@@ -38,7 +38,8 @@ extern "C" {
 MAPSTORE_API int store_data(int fd, uint8_t *hash);
 MAPSTORE_API int retrieve_data(uint8_t *hash);
 MAPSTORE_API int delete_data(uint8_t *hash);
-
+MAPSTORE_API json_object *get_data_info(uint8_t *hash);
+MAPSTORE_API json_object *get_store_info();
 
 #ifdef __cplusplus
 }
