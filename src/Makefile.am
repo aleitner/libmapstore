@@ -1,6 +1,6 @@
 
 lib_LTLIBRARIES = libmapstore.la
-libmapstore_la_SOURCES = mapstore.c shareshare.h
+libmapstore_la_SOURCES = mapstore.c shareshare.h utils.c utils.h
 libmapstore_la_LIBADD = -ljson-c -luv -lsqlite3 -lm
 libmapstore_la_LDFLAGS = -Wall
 if BUILD_MAPSTORE_DLL

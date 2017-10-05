@@ -1,4 +1,5 @@
 #include "mapstore.h"
+#include "utils.h"
 
 MAPSTORE_API int store_data(int fd, uint8_t *hash) {
     printf("I'm here!");
