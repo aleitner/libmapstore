@@ -25,6 +25,13 @@ AC_CHECK_HEADERS([uv.h], [uv_found_headers=yes; break;])
 AS_IF([test "x$uv_found_headers" != "xyes"],
         [AC_MSG_ERROR([Unable to find libuv headers.])])
 
+PKG_CHECK_MODULES([NETTLE], [nettle >= 3.1],, [AC_MSG_ERROR([nettle 3.1 or greater was not found.
+                            You can get it from https://www.lysator.liu.se/~nisse/nettle/])])
+
+AC_CHECK_HEADERS([nettle/aes.h], [nettle_found_headers=yes; break;])
+AS_IF([test "x$nettle_found_headers" != "xyes"],
+        [AC_MSG_ERROR([Unable to find nettle headers.])])
+
 AC_CONFIG_FILES([Makefile src/Makefile test/Makefile])
 AC_CONFIG_FILES([libmapstore.pc:libmapstore.pc.in])
 

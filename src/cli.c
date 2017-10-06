@@ -93,8 +93,13 @@ int main (int argc, char **argv)
             goto end_store;
         }
 
-        uint8_t *data_hash = "abc123";
+        uint8_t *data_hash = NULL;
+        int ret = get_file_hash(fileno(data_file), &data_hash);
+        if (ret != 0) {
+            goto end_store;
+        }
 
+        printf("Data hash: %s\n", data_hash);
         status = store_data(fileno(data_file), data_hash);
 
         /* Clean up store command */

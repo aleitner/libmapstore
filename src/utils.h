@@ -11,7 +11,11 @@
 #include <assert.h>
 #include <errno.h>
 #include <math.h>
+
+#include <nettle/ripemd160.h>
+#include <nettle/sha.h>
 #include <nettle/base16.h>
+
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -39,5 +43,7 @@ int allocatefile(int fd, uint64_t length);
 int unmap_file(uint8_t *map, uint64_t filesize);
 
 int map_file(int fd, uint64_t filesize, uint8_t **map, bool read_only);
+
+int get_file_hash(int fd, uint8_t **hash);
 
 #endif /* MAPSTORE_UTILS_H */
