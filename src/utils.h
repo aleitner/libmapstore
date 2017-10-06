@@ -24,6 +24,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -45,5 +46,7 @@ int unmap_file(uint8_t *map, uint64_t filesize);
 int map_file(int fd, uint64_t filesize, uint8_t **map, bool read_only);
 
 int get_file_hash(int fd, uint8_t **hash);
+
+int read_config(char *config_path, char **config_raw);
 
 #endif /* MAPSTORE_UTILS_H */

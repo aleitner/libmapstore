@@ -203,3 +203,24 @@ int get_file_hash(int fd, uint8_t **hash) {
 
     return 0;
 }
+
+int read_config(char *config_path, char **config_raw)
+{
+    FILE *config_file = fopen(config_path, "r");
+
+    if (!config_file) {
+        printf("Could not open config: %s\n", config_path);
+        return 1;
+    }
+
+    // TODO read config
+    struct stat st;
+    stat(config_path, &st);
+    int config_size = st.st_size;
+
+    // Read config into config_raw
+    *config_raw = calloc(config_size, sizeof(char));;
+    fread(*config_raw, config_size, 1, config_file);
+
+    return 0;
+}

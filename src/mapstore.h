@@ -31,19 +31,20 @@ extern "C" {
 #include <string.h>
 #include <json-c/json.h>
 #include <sqlite3.h>
-#include <uv.h>
 #include "utils.h"
-#include "server.h"
 
 #include <inttypes.h>
 
-MAPSTORE_API int store_data(int fd, uint8_t *hash);
-MAPSTORE_API int retrieve_data(uint8_t *hash);
-MAPSTORE_API int delete_data(uint8_t *hash);
-MAPSTORE_API json_object *get_data_info(uint8_t *hash);
-MAPSTORE_API json_object *get_store_info();
-MAPSTORE_API int start_server();
-MAPSTORE_API int stop_server();
+typedef struct  {
+  int butts;
+} mapstore_ctx;
+
+MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash);
+MAPSTORE_API int retrieve_data(mapstore_ctx *ctx, uint8_t *hash);
+MAPSTORE_API int delete_data(mapstore_ctx *ctx, uint8_t *hash);
+MAPSTORE_API json_object *get_data_info(mapstore_ctx *ctx, uint8_t *hash);
+MAPSTORE_API json_object *get_store_info(mapstore_ctx *ctx);
+MAPSTORE_API int initialize_ctx(mapstore_ctx *ctx, char *config_path);
 
 #ifdef __cplusplus
 }

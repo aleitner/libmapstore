@@ -6,8 +6,6 @@ static inline void noop() {};
 
 #define HELP_TEXT "usage: mapstore [<options>] <command> [<args>]\n\n"         \
     "These are common mapstore commands for various situations:\n\n"           \
-    "  start <config-path>       start MapStore Server\n"                      \
-    "  stop                      stop MapStore Server\n"                       \
     "  store <data-path>         store file\n"                                 \
     "  retrieve <hash>           retrieve data from map store\n"               \
     "  delete <hash>             delete data from map store\n"                 \
@@ -17,6 +15,7 @@ static inline void noop() {};
     "options:\n"                                                               \
     "  -h, --help                output usage information\n"                   \
     "  -v, --version             output the version number\n"                  \
+    "  -c, --config              config for mapstore context\n"                \
 
 
 #define CLI_VERSION "0.0.1"
@@ -28,10 +27,12 @@ int main (int argc, char **argv)
     int log_level = 0;
     int index = 0;
     int ret = 0; // Variable for checking function return codes
+    char *config_path = NULL;
 
     static struct option cmd_options[] = {
         {"version", no_argument,  0, 'v'},
         {"log", required_argument,  0, 'l'},
+        {"config", required_argument,  0, 'c'},
         {"debug", no_argument,  0, 'd'},
         {"help", no_argument,  0, 'h'},
         {0, 0, 0, 0}
@@ -44,6 +45,9 @@ int main (int argc, char **argv)
         switch (c) {
             case 'l':
                 log_level = atoi(optarg);
+                break;
+            case 'c':
+                config_path = optarg;
                 break;
             case 'd':
                 log_level = 4;
@@ -73,19 +77,8 @@ int main (int argc, char **argv)
         return 0;
     }
 
-    if (strcmp(command, "start") == 0) {
-        printf("starting the server\n\n");
-        char *config_path = argv[command_index + 1];
-
-        ret = start_server(config_path);
-
-        if (ret != 0 ) {
-            printf("Something went wrong\n");
-            return ret;
-        }
-
-        return 0;
-    }
+    mapstore_ctx ctx;
+    ret = initialize_ctx(&ctx, config_path);
 
     /**
      * Store File
@@ -120,6 +113,7 @@ int main (int argc, char **argv)
         }
 
         printf("Data hash: %s\n", data_hash);
+        store_data(&ctx, fileno(data_file), data_hash);
 
         /* Clean up store command */
 end_store:
