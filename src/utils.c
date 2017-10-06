@@ -162,8 +162,7 @@ win_finished:
 
 int get_file_hash(int fd, uint8_t **hash) {
     ssize_t read_len = 0;
-    ssize_t total_read = 0;
-    char read_data[BUFSIZ];
+    uint8_t read_data[BUFSIZ];
     uint8_t prehash_sha256[SHA256_DIGEST_SIZE];
     uint8_t hash_as_hex[RIPEMD160_DIGEST_SIZE];
 
@@ -174,7 +173,7 @@ int get_file_hash(int fd, uint8_t **hash) {
     ripemd160_init(&ripemd160ctx);
 
     do {
-        read_len = pread(fd, read_data, BUFSIZ, total_read);
+        read_len = read(fd, read_data, BUFSIZ);
 
         if (read_len == -1) {
             printf("Error reading file for hashing\n");
@@ -183,7 +182,6 @@ int get_file_hash(int fd, uint8_t **hash) {
 
         sha256_update(&sha256ctx, read_len, read_data);
 
-        total_read += read_len;
         memset(read_data, '\0', BUFSIZ);
     } while (read_len > 0);
 

@@ -79,16 +79,19 @@ int main (int argc, char **argv)
 
         char *data_path = argv[command_index + 1];
 
-        if (!data_path) {
-            printf("Missing first argument: <data-path>\n");
-            status = 1;
-            goto end_store;
+        if (data_path) {
+            data_file = fopen(data_path, "r");;
+        } else {
+            data_file = stdin;
         }
 
-        data_file = fopen(data_path, "r");
-
         if (!data_file) {
-            printf("Could not access data: %s\n", data_path);
+            if (data_path) {
+                printf("Could not access data: %s\n", data_path);
+            } else {
+                printf("Could not access data from stdout\n");
+            }
+
             status = 1;
             goto end_store;
         }
