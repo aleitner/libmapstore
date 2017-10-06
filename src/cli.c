@@ -6,6 +6,8 @@ static inline void noop() {};
 
 #define HELP_TEXT "usage: mapstore [<options>] <command> [<args>]\n\n"         \
     "These are common mapstore commands for various situations:\n\n"           \
+    "  start <config-path>       start MapStore Server\n"                      \
+    "  stop                      stop MapStore Server\n"                       \
     "  store <data-path>         store file\n"                                 \
     "  retrieve <hash>           retrieve data from map store\n"               \
     "  delete <hash>             delete data from map store\n"                 \
@@ -25,6 +27,7 @@ int main (int argc, char **argv)
     int c;
     int log_level = 0;
     int index = 0;
+    int ret = 0; // Variable for checking function return codes
 
     static struct option cmd_options[] = {
         {"version", no_argument,  0, 'v'},
@@ -70,6 +73,20 @@ int main (int argc, char **argv)
         return 0;
     }
 
+    if (strcmp(command, "start") == 0) {
+        printf("starting the server\n\n");
+        char *config_path = argv[command_index + 1];
+
+        ret = start_server(config_path);
+
+        if (ret != 0 ) {
+            printf("Something went wrong\n");
+            return ret;
+        }
+
+        return 0;
+    }
+
     /**
      * Store File
      */
@@ -97,13 +114,12 @@ int main (int argc, char **argv)
         }
 
         uint8_t *data_hash = NULL;
-        int ret = get_file_hash(fileno(data_file), &data_hash);
+        ret = get_file_hash(fileno(data_file), &data_hash);
         if (ret != 0) {
             goto end_store;
         }
 
         printf("Data hash: %s\n", data_hash);
-        status = store_data(fileno(data_file), data_hash);
 
         /* Clean up store command */
 end_store:
