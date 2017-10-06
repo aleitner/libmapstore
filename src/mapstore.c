@@ -1,6 +1,6 @@
 #include "mapstore.h"
 
-MAPSTORE_API int initialize_ctx(mapstore_ctx *ctx, char *config_path) {
+MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, char *config_path) {
     printf("Initializing mapstore context\n");
     int status = 0;
 

@@ -44,7 +44,7 @@ MAPSTORE_API int retrieve_data(mapstore_ctx *ctx, uint8_t *hash);
 MAPSTORE_API int delete_data(mapstore_ctx *ctx, uint8_t *hash);
 MAPSTORE_API json_object *get_data_info(mapstore_ctx *ctx, uint8_t *hash);
 MAPSTORE_API json_object *get_store_info(mapstore_ctx *ctx);
-MAPSTORE_API int initialize_ctx(mapstore_ctx *ctx, char *config_path);
+MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, char *config_path);
 
 #ifdef __cplusplus
 }

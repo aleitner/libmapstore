@@ -78,7 +78,7 @@ int main (int argc, char **argv)
     }
 
     mapstore_ctx ctx;
-    ret = initialize_ctx(&ctx, config_path);
+    ret = initialize_mapstore(&ctx, config_path);
 
     /**
      * Store File
