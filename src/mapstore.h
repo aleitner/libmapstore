@@ -36,15 +36,21 @@ extern "C" {
 #include <inttypes.h>
 
 typedef struct  {
-  int butts;
+  uint64_t allocation_size;
+  uint64_t map_size;
 } mapstore_ctx;
+
+typedef struct  {
+  uint64_t allocation_size;
+  uint64_t map_size;
+} mapstore_opts;
 
 MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash);
 MAPSTORE_API int retrieve_data(mapstore_ctx *ctx, uint8_t *hash);
 MAPSTORE_API int delete_data(mapstore_ctx *ctx, uint8_t *hash);
 MAPSTORE_API json_object *get_data_info(mapstore_ctx *ctx, uint8_t *hash);
 MAPSTORE_API json_object *get_store_info(mapstore_ctx *ctx);
-MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, char *config_path);
+MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts);
 
 #ifdef __cplusplus
 }

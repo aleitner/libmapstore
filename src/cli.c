@@ -15,8 +15,6 @@ static inline void noop() {};
     "options:\n"                                                               \
     "  -h, --help                output usage information\n"                   \
     "  -v, --version             output the version number\n"                  \
-    "  -c, --config              config for mapstore context\n"                \
-
 
 #define CLI_VERSION "0.0.1"
 
@@ -27,12 +25,10 @@ int main (int argc, char **argv)
     int log_level = 0;
     int index = 0;
     int ret = 0; // Variable for checking function return codes
-    char *config_path = NULL;
 
     static struct option cmd_options[] = {
         {"version", no_argument,  0, 'v'},
         {"log", required_argument,  0, 'l'},
-        {"config", required_argument,  0, 'c'},
         {"debug", no_argument,  0, 'd'},
         {"help", no_argument,  0, 'h'},
         {0, 0, 0, 0}
@@ -45,9 +41,6 @@ int main (int argc, char **argv)
         switch (c) {
             case 'l':
                 log_level = atoi(optarg);
-                break;
-            case 'c':
-                config_path = optarg;
                 break;
             case 'd':
                 log_level = 4;
@@ -78,7 +71,11 @@ int main (int argc, char **argv)
     }
 
     mapstore_ctx ctx;
-    ret = initialize_mapstore(&ctx, config_path);
+    mapstore_opts opts;
+
+    opts.allocation_size = 10737418240; // 10GB
+    opts.map_size = 2147483647;         // 2GB
+    ret = initialize_mapstore(&ctx, opts);
 
     /**
      * Store File

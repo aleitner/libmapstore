@@ -1,33 +1,13 @@
 #include "mapstore.h"
 
-MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, char *config_path) {
+MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts) {
     printf("Initializing mapstore context\n");
     int status = 0;
 
-    char *config_raw = NULL;
-
-    if (!config_path) {
-        //TODO: Use default
-       printf("Missing config path\n");
-       status = 1;
-       goto end_initalize;
-    }
-
-    int ret = read_config(config_path, &config_raw);
-
-    if (ret == 1) {
-       printf("Could not read config\n");
-       status = 1;
-       goto end_initalize;
-    }
-
-    json_object * jobj = json_tokener_parse(config_raw);
-    printf("Config:\n%s\n",json_object_to_json_string(jobj));
+    ctx->allocation_size = opts.allocation_size;
+    ctx->map_size = opts.map_size;
 
 end_initalize:
-    if (config_raw) {
-        free(config_raw);
-    }
 
     return status;
 }
