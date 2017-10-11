@@ -44,6 +44,8 @@ MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts) {
     ctx->database_path = calloc(strlen(base_path) + 15, sizeof(char));
     sprintf(ctx->database_path, "%s%cshards.sqlite", base_path, separator());
 
+    prepare_tables(ctx->database_path);
+
 end_initalize:
     if (base_path) {
         free(base_path);
@@ -105,4 +107,51 @@ MAPSTORE_API json_object *get_data_info(mapstore_ctx *ctx, uint8_t *hash) {
 
 MAPSTORE_API json_object *get_store_info(mapstore_ctx *ctx) {
     fprintf(stdout, "I'm here!");;
+}
+
+//////////////////////
+// Static functions //
+//////////////////////
+
+static int prepare_tables(char *database_path) {
+    int status = 0;
+    char *err_msg = NULL;
+    sqlite3 *db = NULL;
+
+    if (sqlite3_open(database_path, &db) != SQLITE_OK) {
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        status = 1;
+        goto end_prepare_tables;
+    }
+
+    char *data_locations_table = "CREATE TABLE IF NOT EXISTS `data_locations` ( "
+        "`Id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, "
+        "`hash` TEXT NOT NULL UNIQUE, "
+        "`size` INTEGER NOT NULL, "
+        "`positions` TEXT NOT NULL, "
+        "`date` NUMERIC NOT NULL )";
+
+    if(sqlite3_exec(db, data_locations_table, 0, 0, &err_msg) != SQLITE_OK) {
+        fprintf(stderr, "Failed to create table\n");
+        fprintf(stderr, "SQL error: %s\n", err_msg);
+        sqlite3_free(err_msg);
+    }
+
+    char *map_stores = "CREATE TABLE IF NOT EXISTS `map_stores` ( "
+        "`Id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, "
+        "`free_locations` TEXT NOT NULL UNIQUE, "
+        "`free_space` INTEGER NOT NULL)";
+
+    if(sqlite3_exec(db, map_stores, 0, 0, &err_msg) != SQLITE_OK) {
+        fprintf(stderr, "Failed to create table\n");
+        fprintf(stderr, "SQL error: %s\n", err_msg);
+        sqlite3_free(err_msg);
+    }
+
+end_prepare_tables:
+    if (db) {
+        sqlite3_close(db);
+    }
+
+    return status;
 }
