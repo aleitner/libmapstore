@@ -44,7 +44,19 @@ MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts) {
     ctx->database_path = calloc(strlen(base_path) + 15, sizeof(char));
     sprintf(ctx->database_path, "%s%cshards.sqlite", base_path, separator());
 
-    prepare_tables(ctx->database_path);
+    // If sqlite doesn't exist create below
+
+    if (prepare_tables(ctx) != 0) {
+        fprintf(stderr, "Could not create tables\n");
+        status = 1;
+        goto end_initalize;
+    };
+
+    if (map_files(ctx) != 0) {
+        fprintf(stderr, "Could not create tables\n");
+        status = 1;
+        goto end_initalize;
+    };
 
 end_initalize:
     if (base_path) {
@@ -113,10 +125,11 @@ MAPSTORE_API json_object *get_store_info(mapstore_ctx *ctx) {
 // Static functions //
 //////////////////////
 
-static int prepare_tables(char *database_path) {
+static int prepare_tables(mapstore_ctx *ctx) {
     int status = 0;
     char *err_msg = NULL;
     sqlite3 *db = NULL;
+    char *database_path = ctx->database_path;
 
     if (sqlite3_open(database_path, &db) != SQLITE_OK) {
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
@@ -138,17 +151,69 @@ static int prepare_tables(char *database_path) {
     }
 
     char *map_stores = "CREATE TABLE IF NOT EXISTS `map_stores` ( "
-        "`Id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, "
-        "`free_locations` TEXT NOT NULL UNIQUE, "
+        "`Id` INTEGER NOT NULL, "
+        "`free_locations` TEXT NOT NULL, "
         "`free_space` INTEGER NOT NULL)";
 
     if(sqlite3_exec(db, map_stores, 0, 0, &err_msg) != SQLITE_OK) {
         fprintf(stderr, "Failed to create table\n");
         fprintf(stderr, "SQL error: %s\n", err_msg);
         sqlite3_free(err_msg);
+        goto end_prepare_tables;
     }
 
 end_prepare_tables:
+    if (db) {
+        sqlite3_close(db);
+    }
+
+    return status;
+}
+
+static int map_files(mapstore_ctx *ctx) {
+    int status = 0;
+    uint64_t dv = ctx->allocation_size / ctx->map_size;
+    uint64_t rm = ctx->allocation_size % ctx->map_size;
+
+    // Create each mmap file
+
+    fprintf(stdout, "%llu files of size %llu\n", dv, ctx->map_size);
+    if (rm > 0) {
+        fprintf(stdout, "1 file of size %llu\n", rm);
+    }
+
+    int f = 0;
+    char *query = NULL;
+    sqlite3 *db = NULL;
+    char *err_msg = NULL;
+
+    if (sqlite3_open(ctx->database_path, &db) != SQLITE_OK) {
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        status = 1;
+        goto end_map_files;
+    }
+
+    // for (f = 1; f < dv + 1; f++) {
+    //     sprintf(query, "INSERT INTO `map_stores` VALUES(%d, 'free', %llu);", f, ctx->map_size);
+    //     if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
+    //         fprintf(stderr, "Failed to create table\n");
+    //         fprintf(stderr, "SQL error: %s\n", err_msg);
+    //         sqlite3_free(err_msg);
+    //         goto end_map_files;
+    //     }
+    // }
+    //
+    // if (rm > 0) {
+    //     sprintf(query, "INSERT INTO `map_stores` VALUES(%d, 'free', %llu);", f+1, rm);
+    //     if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
+    //         fprintf(stderr, "Failed to create table\n");
+    //         fprintf(stderr, "SQL error: %s\n", err_msg);
+    //         sqlite3_free(err_msg);
+    //         goto end_map_files;
+    //     }
+    // }
+
+end_map_files:
     if (db) {
         sqlite3_close(db);
     }

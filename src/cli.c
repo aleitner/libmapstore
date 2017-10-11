@@ -74,7 +74,7 @@ int main (int argc, char **argv)
     mapstore_opts opts;
 
     opts.allocation_size = 10737418240; // 10GB
-    opts.map_size = 2147483647;         // 2GB
+    opts.map_size = 2147483648;         // 2GB
     opts.path = "/Users/alexleitner/Desktop/storjshare2";
 
     if (initialize_mapstore(&ctx, opts) != 0) {
