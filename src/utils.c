@@ -224,3 +224,25 @@ int read_config(char *config_path, char **config_raw)
 
     return 0;
 }
+
+int create_directory(char *path) {
+#ifdef _WIN32
+    if (CreateDirectory(path, NULL) != 0) {
+        return 1
+    }
+
+    return 0;
+#else
+    struct stat st = {0};
+
+    if (stat(path, &st) == -1) {
+        if (mkdir(path, 0777) != 0) {
+            perror("mkdir");
+            return 1;
+        }
+    }
+
+    return 0;
+#endif
+
+}

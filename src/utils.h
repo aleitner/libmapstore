@@ -49,4 +49,15 @@ int get_file_hash(int fd, uint8_t **hash);
 
 int read_config(char *config_path, char **config_raw);
 
+int create_directory(char *path);
+
+static inline char separator()
+{
+#ifdef _WIN32
+    return '\\';
+#else
+    return '/';
+#endif
+}
+
 #endif /* MAPSTORE_UTILS_H */

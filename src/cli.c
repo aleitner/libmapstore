@@ -75,8 +75,12 @@ int main (int argc, char **argv)
 
     opts.allocation_size = 10737418240; // 10GB
     opts.map_size = 2147483647;         // 2GB
-    opts.path = NULL;
-    ret = initialize_mapstore(&ctx, opts);
+    opts.path = "/Users/alexleitner/Desktop/storjshare2";
+
+    if (initialize_mapstore(&ctx, opts) != 0) {
+        printf("Error initializing mapstore\n");
+        return 1;
+    }
 
     printf("ctx.allocation_size: %llu\n", ctx.allocation_size);
     printf("ctx.map_size: %llu\n", ctx.map_size);
