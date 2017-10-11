@@ -23,3 +23,4 @@ test/*.o
 test/.deps
 test/tests
 test/.libs
+src/mapstore.dSYM/

@@ -75,8 +75,13 @@ int main (int argc, char **argv)
 
     opts.allocation_size = 10737418240; // 10GB
     opts.map_size = 2147483647;         // 2GB
+    opts.path = NULL;
     ret = initialize_mapstore(&ctx, opts);
 
+    printf("ctx.allocation_size: %llu\n", ctx.allocation_size);
+    printf("ctx.map_size: %llu\n", ctx.map_size);
+    printf("ctx.mapstore_path: %s\n", ctx.mapstore_path);
+    printf("ctx.database_path: %s\n", ctx.database_path);
     /**
      * Store File
      */

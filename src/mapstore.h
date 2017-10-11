@@ -38,11 +38,14 @@ extern "C" {
 typedef struct  {
   uint64_t allocation_size;
   uint64_t map_size;
+  char *mapstore_path;
+  char *database_path;
 } mapstore_ctx;
 
 typedef struct  {
   uint64_t allocation_size;
   uint64_t map_size;
+  char *path;
 } mapstore_opts;
 
 MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash);
