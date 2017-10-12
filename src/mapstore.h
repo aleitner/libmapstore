@@ -31,7 +31,6 @@ extern "C" {
 #include <string.h>
 #include <json-c/json.h>
 #include <sqlite3.h>
-#include "utils.h"
 
 #include <inttypes.h>
 
@@ -48,37 +47,12 @@ typedef struct  {
   char *path;
 } mapstore_opts;
 
-typedef struct  {
-  int primary_key;
-  char *hash;
-  uint64_t size;
-  json_object *positions;
-  uint64_t date;
-} data_locations_row;
-
-typedef struct  {
-  uint64_t id;
-  json_object *free_locations;
-  uint64_t free_space;
-  uint64_t size;
-} map_store_row;
-
-typedef struct  {
-  int primary_key;
-  uint64_t allocation_size;
-  uint64_t map_size;
-} map_store_layout_row;
-
 MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash);
 MAPSTORE_API int retrieve_data(mapstore_ctx *ctx, uint8_t *hash);
 MAPSTORE_API int delete_data(mapstore_ctx *ctx, uint8_t *hash);
 MAPSTORE_API json_object *get_data_info(mapstore_ctx *ctx, uint8_t *hash);
 MAPSTORE_API json_object *get_store_info(mapstore_ctx *ctx);
 MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts);
-
-static int prepare_tables(mapstore_ctx *ctx);
-static int map_files(mapstore_ctx *ctx);
-static int get_latest_layout_row(sqlite3 *db, map_store_layout_row *row);
 
 #ifdef __cplusplus
 }

@@ -12,9 +12,6 @@
 #include <errno.h>
 #include <math.h>
 
-#include <nettle/ripemd160.h>
-#include <nettle/sha.h>
-#include <nettle/base16.h>
 #include <json-c/json.h>
 
 #include <stdarg.h>
@@ -45,10 +42,6 @@ int allocatefile(int fd, uint64_t length);
 int unmap_file(uint8_t *map, uint64_t filesize);
 
 int map_file(int fd, uint64_t filesize, uint8_t **map, bool read_only);
-
-int get_file_hash(int fd, uint8_t **hash);
-
-int read_config(char *config_path, char **config_raw);
 
 int create_directory(char *path);
 

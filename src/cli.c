@@ -1,5 +1,4 @@
-#include <ctype.h>
-#include <getopt.h>
+#include "cli_helper.h"
 #include "mapstore.h"
 
 static inline void noop() {};
