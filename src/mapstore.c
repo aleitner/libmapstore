@@ -46,7 +46,7 @@ MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts) {
     ctx->database_path = calloc(strlen(base_path) + 15, sizeof(char));
     sprintf(ctx->database_path, "%s%cshards.sqlite", base_path, separator());
 
-    if (prepare_tables(ctx) != 0) {
+    if (prepare_tables(ctx->database_path) != 0) {
         fprintf(stderr, "Could not create tables\n");
         status = 1;
         goto end_initalize;

@@ -1,10 +1,9 @@
 #include "database_utils.h"
 
-int prepare_tables(mapstore_ctx *ctx) {
+int prepare_tables(char *database_path) {
     int status = 0;
     char *err_msg = NULL;
     sqlite3 *db = NULL;
-    char *database_path = ctx->database_path;
 
     if (sqlite3_open(database_path, &db) != SQLITE_OK) {
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
@@ -81,6 +80,7 @@ int map_files(mapstore_ctx *ctx) {
         goto end_map_files;
     };
 
+
     /* Insert table layout. We can keep track of the change over time */
     memset(query, '\0', BUFSIZ);
     sprintf(query, "INSERT INTO `map_store_layout` (map_size,allocation_size) VALUES(%llu,%llu);", ctx->map_size, ctx->allocation_size);
@@ -93,22 +93,27 @@ int map_files(mapstore_ctx *ctx) {
 
     /* Update database to know metadata about each mmap file */
     fprintf(stdout, "%llu files of size %llu\n", dv, ctx->map_size);
+    map_store_row row;
+    uint64_t map_size = (ctx->map_size > previous_layout.map_size) ? ctx->map_size : previous_layout.map_size;
+    uint64_t free_space = ctx->map_size;
     for (f = 1; f < dv + 1; f++) {
+
+        if (get_store_row_by_id(db, f, &row) != 0) {
+            goto end_map_files;
+        };
 
         if (ctx->allocation_size > previous_layout.allocation_size) {
             printf("New allocation size.\n");
-        }
-        // Check if alloc size increased
-        // Check if file_size needs to be increased
-        // If so increase freespace with difference of increased size and last free space
-        // add free location of previous [file_size, new size -1]
-        // Update
+            if (row.size < ctx->map_size) {
+                free_space = ctx->map_size - row.size + row.free_space;
+            }
 
-        // ELSE
+            // TODO: Make sure we also fix the locations without destroying them
+        }
 
         memset(query, '\0', BUFSIZ);
         json_positions = create_json_positions_array(0, ctx->map_size - 1);
-        sprintf(query, "INSERT INTO `map_stores` VALUES(%d, '%s', %llu, %llu);", f, json_object_to_json_string(json_positions), ctx->map_size, ctx->map_size);
+        sprintf(query, "INSERT INTO `map_stores` VALUES(%d, '%s', %llu, %llu);", f, json_object_to_json_string(json_positions), free_space, map_size);
         if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
             fprintf(stderr, "Failed to insert to table map_stores\n");
             fprintf(stderr, "SQL error: %s\n", err_msg);
@@ -176,8 +181,8 @@ int get_latest_layout_row(sqlite3 *db, map_store_layout_row *row) {
                         memset(column_name, '\0', BUFSIZ);
                         strcpy(column_name, sqlite3_column_name(stmt, i));
 
-                        if (strcmp(column_name, "primary_key") == 0) {
-                            row->primary_key = sqlite3_column_int64(stmt, i);
+                        if (strcmp(column_name, "Id") == 0) {
+                            row->id = sqlite3_column_int64(stmt, i);
                         }
 
                         if (strcmp(column_name, "allocation_size") == 0) {
@@ -195,5 +200,62 @@ int get_latest_layout_row(sqlite3 *db, map_store_layout_row *row) {
     sqlite3_finalize(stmt);
 
 end_map_store_layout_row:
+    return status;
+}
+
+int get_store_row_by_id(sqlite3 *db, uint64_t id, map_store_row *row) {
+    int status = 0;
+    int rc;
+    char query[BUFSIZ];
+    char column_name[BUFSIZ];
+    sqlite3_stmt *stmt = NULL;
+
+    memset(query, '\0', BUFSIZ);
+    sprintf(query, "SELECT * FROM `map_stores` WHERE Id = %llu", id);
+    if ((rc = sqlite3_prepare_v2(db, query, BUFSIZ, &stmt, 0)) != SQLITE_OK) {
+        fprintf(stderr, "sql error: %s\n", sqlite3_errmsg(db));
+        status = 1;
+        goto end_map_store_row;
+    } else while((rc = sqlite3_step(stmt)) != SQLITE_DONE) {
+        switch(rc) {
+            case SQLITE_BUSY:
+                fprintf(stderr, "Database is busy\n");
+                sleep(1);
+                break;
+            case SQLITE_ERROR:
+                fprintf(stderr, "step error: %s\n", sqlite3_errmsg(db));
+                status = 1;
+                goto end_map_store_row;
+            case SQLITE_ROW:
+                {
+                    int n = sqlite3_column_count(stmt);
+                    int i;
+                    for (i = 0; i < n; i++) {
+                        memset(column_name, '\0', BUFSIZ);
+                        strcpy(column_name, sqlite3_column_name(stmt, i));
+
+                        if (strcmp(column_name, "Id") == 0) {
+                            row->id = sqlite3_column_int64(stmt, i);
+                        }
+
+                        if (strcmp(column_name, "free_space") == 0) {
+                            row->free_space = sqlite3_column_int64(stmt, i);
+                        }
+
+                        if (strcmp(column_name, "size") == 0) {
+                            row->size = sqlite3_column_int64(stmt, i);
+                        }
+
+                        if (strcmp(column_name, "free_locations") == 0) {
+                            row->free_locations = json_tokener_parse((const char *)sqlite3_column_text(stmt, i));
+                        }
+                    }
+                }
+        }
+    }
+
+    sqlite3_finalize(stmt);
+
+end_map_store_row:
     return status;
 }

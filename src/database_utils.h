@@ -26,7 +26,7 @@
 #include "utils.h"
 
 typedef struct  {
-  int primary_key;
+  int id;
   char *hash;
   uint64_t size;
   json_object *positions;
@@ -41,13 +41,14 @@ typedef struct  {
 } map_store_row;
 
 typedef struct  {
-  int primary_key;
+  int id;
   uint64_t allocation_size;
   uint64_t map_size;
 } map_store_layout_row;
 
-int prepare_tables(mapstore_ctx *ctx);
+int prepare_tables(char *database_path);
 int map_files(mapstore_ctx *ctx);
 int get_latest_layout_row(sqlite3 *db, map_store_layout_row *row);
+int get_store_row_by_id(sqlite3 *db, uint64_t id, map_store_row *row);
 
 #endif /* MAPSTORE_DATABASE_UTILS_H */
