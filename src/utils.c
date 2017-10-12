@@ -244,5 +244,14 @@ int create_directory(char *path) {
 
     return 0;
 #endif
+}
 
+json_object *create_json_positions_array(uint64_t start, uint64_t end) {
+    json_object *jarray = json_object_new_array();
+    json_object *first = json_object_new_int64(start);
+    json_object *final = json_object_new_int64(end);
+    json_object_array_add(jarray,first);
+    json_object_array_add(jarray,final);
+
+    return jarray;
 }

@@ -15,6 +15,7 @@
 #include <nettle/ripemd160.h>
 #include <nettle/sha.h>
 #include <nettle/base16.h>
+#include <json-c/json.h>
 
 #include <stdarg.h>
 #include <stdbool.h>
@@ -50,6 +51,8 @@ int get_file_hash(int fd, uint8_t **hash);
 int read_config(char *config_path, char **config_raw);
 
 int create_directory(char *path);
+
+json_object *create_json_positions_array(uint64_t start, uint64_t end);
 
 static inline char separator()
 {
