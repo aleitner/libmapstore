@@ -96,6 +96,7 @@ int map_files(mapstore_ctx *ctx) {
     map_store_row row;
     uint64_t map_size = (ctx->map_size > previous_layout.map_size) ? ctx->map_size : previous_layout.map_size;
     uint64_t free_space = ctx->map_size;
+    uint64_t id;
     for (f = 1; f < dv + 1; f++) {
 
         if (get_store_row_by_id(db, f, &row) != 0) {
@@ -113,6 +114,9 @@ int map_files(mapstore_ctx *ctx) {
 
         memset(query, '\0', BUFSIZ);
         json_positions = create_json_positions_array(0, ctx->map_size - 1);
+        if (row.free_locations) {
+            // TODO: Delete previous row
+        }
         sprintf(query, "INSERT INTO `map_stores` VALUES(%d, '%s', %llu, %llu);", f, json_object_to_json_string(json_positions), free_space, map_size);
         if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
             fprintf(stderr, "Failed to insert to table map_stores\n");
