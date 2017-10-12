@@ -57,6 +57,7 @@ MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts);
 
 static int prepare_tables(mapstore_ctx *ctx);
 static int map_files(mapstore_ctx *ctx);
+static json_object *create_json_positions_array(uint64_t start, uint64_t end);
 
 #ifdef __cplusplus
 }

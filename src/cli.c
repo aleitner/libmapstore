@@ -115,6 +115,7 @@ int main (int argc, char **argv)
         uint8_t *data_hash = NULL;
         ret = get_file_hash(fileno(data_file), &data_hash);
         if (ret != 0) {
+            status = 1;
             goto end_store;
         }
 

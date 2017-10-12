@@ -45,18 +45,23 @@ MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts) {
     sprintf(ctx->database_path, "%s%cshards.sqlite", base_path, separator());
 
     // If sqlite doesn't exist create below
+    struct stat st = {0};
 
-    if (prepare_tables(ctx) != 0) {
-        fprintf(stderr, "Could not create tables\n");
-        status = 1;
-        goto end_initalize;
-    };
+    if (stat(ctx->database_path, &st) == -1) {
+        fprintf(stdout, "Preparing database\n");
 
-    if (map_files(ctx) != 0) {
-        fprintf(stderr, "Could not create tables\n");
-        status = 1;
-        goto end_initalize;
-    };
+        if (prepare_tables(ctx) != 0) {
+            fprintf(stderr, "Could not create tables\n");
+            status = 1;
+            goto end_initalize;
+        };
+
+        if (map_files(ctx) != 0) {
+            fprintf(stderr, "Could not create tables\n");
+            status = 1;
+            goto end_initalize;
+        };
+    }
 
 end_initalize:
     if (base_path) {
@@ -170,22 +175,26 @@ end_prepare_tables:
     return status;
 }
 
+static json_object *create_json_positions_array(uint64_t start, uint64_t end) {
+    json_object *jarray = json_object_new_array();
+    json_object *first = json_object_new_int64(start);
+    json_object *final = json_object_new_int64(end);
+    json_object_array_add(jarray,first);
+    json_object_array_add(jarray,final);
+
+    return jarray;
+}
+
 static int map_files(mapstore_ctx *ctx) {
     int status = 0;
     uint64_t dv = ctx->allocation_size / ctx->map_size;
     uint64_t rm = ctx->allocation_size % ctx->map_size;
 
-    // Create each mmap file
-
-    fprintf(stdout, "%llu files of size %llu\n", dv, ctx->map_size);
-    if (rm > 0) {
-        fprintf(stdout, "1 file of size %llu\n", rm);
-    }
-
     int f = 0;
-    char *query = NULL;
+    char query[BUFSIZ];
     sqlite3 *db = NULL;
     char *err_msg = NULL;
+    json_object *json_positions = NULL;
 
     if (sqlite3_open(ctx->database_path, &db) != SQLITE_OK) {
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
@@ -193,25 +202,33 @@ static int map_files(mapstore_ctx *ctx) {
         goto end_map_files;
     }
 
-    // for (f = 1; f < dv + 1; f++) {
-    //     sprintf(query, "INSERT INTO `map_stores` VALUES(%d, 'free', %llu);", f, ctx->map_size);
-    //     if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
-    //         fprintf(stderr, "Failed to create table\n");
-    //         fprintf(stderr, "SQL error: %s\n", err_msg);
-    //         sqlite3_free(err_msg);
-    //         goto end_map_files;
-    //     }
-    // }
-    //
-    // if (rm > 0) {
-    //     sprintf(query, "INSERT INTO `map_stores` VALUES(%d, 'free', %llu);", f+1, rm);
-    //     if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
-    //         fprintf(stderr, "Failed to create table\n");
-    //         fprintf(stderr, "SQL error: %s\n", err_msg);
-    //         sqlite3_free(err_msg);
-    //         goto end_map_files;
-    //     }
-    // }
+    fprintf(stdout, "%llu files of size %llu\n", dv, ctx->map_size);
+    for (f = 1; f < dv + 1; f++) {
+        memset(query, '\0', BUFSIZ);
+        json_positions = create_json_positions_array(0, ctx->map_size - 1);
+        sprintf(query, "INSERT INTO `map_stores` VALUES(%d, '%s', %llu);", f, json_object_to_json_string(json_positions), ctx->map_size);
+        if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
+            fprintf(stderr, "Failed to create table\n");
+            fprintf(stderr, "SQL error: %s\n", err_msg);
+            sqlite3_free(err_msg);
+            goto end_map_files;
+        }
+
+        // Create map file
+    }
+
+    if (rm > 0) {
+        fprintf(stdout, "1 file of size %llu\n", rm);
+        memset(query, '\0', BUFSIZ);
+        json_positions = create_json_positions_array(0, rm - 1);
+        sprintf(query, "INSERT INTO `map_stores` VALUES(%d, '%s', %llu);", f+1, json_object_to_json_string(json_positions), rm);
+        if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
+            fprintf(stderr, "Failed to create table\n");
+            fprintf(stderr, "SQL error: %s\n", err_msg);
+            sqlite3_free(err_msg);
+            goto end_map_files;
+        }
+    }
 
 end_map_files:
     if (db) {
