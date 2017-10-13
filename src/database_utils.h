@@ -38,16 +38,16 @@ typedef struct  {
   json_object *free_locations;
   uint64_t free_space;
   uint64_t size;
-} map_store_row;
+} mapstore_row;
 
 typedef struct  {
   int id;
   uint64_t allocation_size;
   uint64_t map_size;
-} map_store_layout_row;
+} mapstore_layout_row;
 
 int prepare_tables(char *database_path);
-int get_latest_layout_row(sqlite3 *db, map_store_layout_row *row);
-int get_store_row_by_id(sqlite3 *db, uint64_t id, map_store_row *row);
+int get_latest_layout_row(sqlite3 *db, mapstore_layout_row *row);
+int get_store_row_by_id(sqlite3 *db, uint64_t id, mapstore_row *row);
 
 #endif /* MAPSTORE_DATABASE_UTILS_H */

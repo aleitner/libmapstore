@@ -126,6 +126,7 @@ static int map_files(mapstore_ctx *ctx) {
     uint64_t dv = ctx->allocation_size / ctx->map_size;
     uint64_t rm = ctx->allocation_size % ctx->map_size;
 
+    char mapstore_path[BUFSIZ];        // Path to map_store
     int f = 0;                          // File name and id in database
     char query[BUFSIZ];                 // SQL query
     sqlite3 *db = NULL;                 // Database
@@ -139,7 +140,7 @@ static int map_files(mapstore_ctx *ctx) {
     }
 
     /* get previous layout */
-    map_store_layout_row previous_layout;
+    mapstore_layout_row previous_layout;
     if (get_latest_layout_row(db, &previous_layout) != 0) {
         goto end_map_files;
     };
@@ -147,9 +148,9 @@ static int map_files(mapstore_ctx *ctx) {
 
     /* Insert table layout. We can keep track of the change over time */
     memset(query, '\0', BUFSIZ);
-    sprintf(query, "INSERT INTO `map_store_layout` (map_size,allocation_size) VALUES(%llu,%llu);", ctx->map_size, ctx->allocation_size);
+    sprintf(query, "INSERT INTO `mapstore_layout` (map_size,allocation_size) VALUES(%llu,%llu);", ctx->map_size, ctx->allocation_size);
     if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
-        fprintf(stderr, "Failed to create map_store_layout\n");
+        fprintf(stderr, "Failed to create mapstore_layout\n");
         fprintf(stderr, "SQL error: %s\n", err_msg);
         sqlite3_free(err_msg);
         goto end_map_files;
@@ -157,7 +158,7 @@ static int map_files(mapstore_ctx *ctx) {
 
     /* Update database to know metadata about each mmap file */
     fprintf(stdout, "%llu files of size %llu\n", dv, ctx->map_size);
-    map_store_row row;
+    mapstore_row row;
     uint64_t map_size = (ctx->map_size > previous_layout.map_size) ? ctx->map_size : previous_layout.map_size;
     uint64_t free_space = ctx->map_size;
     uint64_t id;
@@ -168,12 +169,8 @@ static int map_files(mapstore_ctx *ctx) {
         };
 
         // Adjust new sizes if larger allocations
-        if (ctx->allocation_size > previous_layout.allocation_size) {
-            printf("New allocation size.\n");
-            if (row.size < ctx->map_size) {
-                free_space = ctx->map_size - row.size + row.free_space;
-            }
-
+        if (ctx->allocation_size > previous_layout.allocation_size && row.size < ctx->map_size) {
+            free_space = ctx->map_size - row.size + row.free_space;
         }
 
         /* Delete old data if new data is coming in*/
@@ -199,10 +196,22 @@ static int map_files(mapstore_ctx *ctx) {
             json_object_put(json_positions);
             goto end_map_files;
         }
+
         json_object_put(json_positions);
+
         // Create map file
+        if (ctx->allocation_size > previous_layout.allocation_size && row.size < ctx->map_size) {
+            memset(mapstore_path, '\0', BUFSIZ);
+            sprintf(mapstore_path, "%s%d.map", ctx->mapstore_path, f);
+            if (create_map_store(mapstore_path, ctx->map_size) != 0) {
+                fprintf(stderr, "Failed to create mapped file: %s of size %llu", ctx->mapstore_path, ctx->map_size);
+                status = 1;
+                goto end_map_files;
+            };
+        }
     }
 
+    // TODO: Combine this section with previous. Too much reused code
     /* Update database to know metadata if last mmap file is smaller than rest */
     if (rm > 0) {
         if (get_store_row_by_id(db, f+1, &row) != 0) {
@@ -234,6 +243,16 @@ static int map_files(mapstore_ctx *ctx) {
             goto end_map_files;
         }
         json_object_put(json_positions);
+
+        if (ctx->allocation_size > previous_layout.allocation_size && row.size < ctx->map_size) {
+            memset(mapstore_path, '\0', BUFSIZ);
+            sprintf(mapstore_path, "%s%d.map", ctx->mapstore_path, f+1);
+            if (create_map_store(ctx->mapstore_path, rm) != 0) {
+                fprintf(stderr, "Failed to create mapped file: %s of size %llu", ctx->mapstore_path, rm);
+                status = 1;
+                goto end_map_files;
+            };
+        }
     }
 
 end_map_files:

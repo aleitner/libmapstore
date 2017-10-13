@@ -45,6 +45,8 @@ int map_file(int fd, uint64_t filesize, uint8_t **map, bool read_only);
 
 int create_directory(char *path);
 
+int create_map_store(char *path, uint64_t size);
+
 /* Json Functions */
 
 json_object *create_json_positions_array(uint64_t start, uint64_t end);
