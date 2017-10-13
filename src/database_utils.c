@@ -103,20 +103,31 @@ int map_files(mapstore_ctx *ctx) {
             goto end_map_files;
         };
 
+        // Adjust new sizes if larger allocations
         if (ctx->allocation_size > previous_layout.allocation_size) {
             printf("New allocation size.\n");
             if (row.size < ctx->map_size) {
                 free_space = ctx->map_size - row.size + row.free_space;
             }
 
-            // TODO: Make sure we also fix the locations without destroying them
         }
 
+        /* Delete old data if new data is coming in*/
+        if (row.free_locations) {
+            memset(query, '\0', BUFSIZ);
+            sprintf(query, "DELETE from map_stores WHERE Id=%d;", f);
+            if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
+                fprintf(stderr, "Failed to delete from table map_stores\n");
+                fprintf(stderr, "SQL error: %s\n", err_msg);
+                sqlite3_free(err_msg);
+                json_object_put(json_positions);
+                goto end_map_files;
+            }
+        }
+
+        /* Insert new data */
         memset(query, '\0', BUFSIZ);
         json_positions = create_json_positions_array(0, ctx->map_size - 1);
-        if (row.free_locations) {
-            // TODO: Delete previous row
-        }
         sprintf(query, "INSERT INTO `map_stores` VALUES(%d, '%s', %llu, %llu);", f, json_object_to_json_string(json_positions), free_space, map_size);
         if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
             fprintf(stderr, "Failed to insert to table map_stores\n");
@@ -131,6 +142,23 @@ int map_files(mapstore_ctx *ctx) {
 
     /* Update database to know metadata if last mmap file is smaller than rest */
     if (rm > 0) {
+        if (get_store_row_by_id(db, f+1, &row) != 0) {
+            goto end_map_files;
+        };
+
+        /* Delete old data if new data is coming in*/
+        if (row.free_locations) {
+            memset(query, '\0', BUFSIZ);
+            sprintf(query, "DELETE from map_stores WHERE Id=%d;", f+1);
+            if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
+                fprintf(stderr, "Failed to delete from table map_stores\n");
+                fprintf(stderr, "SQL error: %s\n", err_msg);
+                sqlite3_free(err_msg);
+                json_object_put(json_positions);
+                goto end_map_files;
+            }
+        }
+
         fprintf(stdout, "1 file of size %llu\n", rm);
         memset(query, '\0', BUFSIZ);
         json_positions = create_json_positions_array(0, rm - 1);
@@ -215,7 +243,7 @@ int get_store_row_by_id(sqlite3 *db, uint64_t id, map_store_row *row) {
     sqlite3_stmt *stmt = NULL;
 
     memset(query, '\0', BUFSIZ);
-    sprintf(query, "SELECT * FROM `map_stores` WHERE Id = %llu", id);
+    sprintf(query, "SELECT * FROM `map_stores` WHERE Id = %llu LIMIT 1", id);
     if ((rc = sqlite3_prepare_v2(db, query, BUFSIZ, &stmt, 0)) != SQLITE_OK) {
         fprintf(stderr, "sql error: %s\n", sqlite3_errmsg(db));
         status = 1;
