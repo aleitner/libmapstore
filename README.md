@@ -59,11 +59,11 @@ TODO: Add graphical example of architecture
 #### Data location table:
 
 ```
--------------------------------------------------------------------------
-| name | id  | data_hash | data_size | data_positions   | date  | other |
--------------------------------------------------------------------------
-| type | int | bytes(20) | int64     | Stringified JSON | int64 | char  |
--------------------------------------------------------------------------
+-----------------------------------------------------------------
+| name | id  | data_hash | data_size | data_positions   | date  |
+-----------------------------------------------------------------
+| type | int | bytes(20) | int64     | Stringified JSON | int64 |
+-----------------------------------------------------------------
 ```
 
 `data_positions` example:

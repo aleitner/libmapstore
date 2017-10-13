@@ -190,3 +190,53 @@ json_object *create_json_positions_array(uint64_t start, uint64_t end) {
 
     return jarray;
 }
+
+json_object *expand_free_space_list(json_object *old_free_space, uint64_t old_size, uint64_t new_size) {
+    json_object *old_jarray = NULL;
+    json_object *new_jarray = NULL;
+
+    uint64_t old_first;
+    uint64_t old_final;
+
+    json_object *new_free_space = json_object_new_array();
+    bool needs_new_coordinates = true; // true if we need to add new coordinates. false if we modify old coordinates
+    int i = 0;
+
+    printf("Old Size: %llu, New Size: %llu\n", old_size, new_size);
+    printf("Old_space: %s\n",json_object_to_json_string(old_free_space));
+
+    if (old_free_space == NULL) {
+        new_jarray = create_json_positions_array(0, new_size - 1);
+        json_object_array_add(new_free_space, new_jarray);
+
+        return new_free_space;
+    }
+
+    if (old_size < new_size) {
+        for (i = 0; i < json_object_array_length(old_free_space); i++) {
+            old_jarray = json_object_array_get_idx(old_free_space, i);
+            old_first = json_object_get_int64(json_object_array_get_idx(old_jarray, 0));
+            old_final = json_object_get_int64(json_object_array_get_idx(old_jarray, 1));
+
+            /* are we changing anything? */
+            if (old_final == old_size - 1) {
+                new_jarray = create_json_positions_array(old_first, new_size - 1);
+                needs_new_coordinates = false;
+                json_object_array_add(new_free_space, new_jarray);
+            } else {
+                json_object_array_add(new_free_space, old_jarray);
+            }
+        }
+
+        if (needs_new_coordinates) {
+            new_jarray = create_json_positions_array(old_size - 1, new_size - 1);
+            json_object_array_add(new_free_space, new_jarray);
+        }
+    } else {
+        return old_free_space;
+    }
+
+    printf("new_space: %s\n",json_object_to_json_string(new_free_space));
+
+    return new_free_space;
+}

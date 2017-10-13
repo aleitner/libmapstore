@@ -47,7 +47,6 @@ typedef struct  {
 } map_store_layout_row;
 
 int prepare_tables(char *database_path);
-int map_files(mapstore_ctx *ctx);
 int get_latest_layout_row(sqlite3 *db, map_store_layout_row *row);
 int get_store_row_by_id(sqlite3 *db, uint64_t id, map_store_row *row);
 

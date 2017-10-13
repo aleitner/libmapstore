@@ -54,6 +54,8 @@ MAPSTORE_API json_object *get_data_info(mapstore_ctx *ctx, uint8_t *hash);
 MAPSTORE_API json_object *get_store_info(mapstore_ctx *ctx);
 MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts);
 
+static int map_files(mapstore_ctx *ctx);
+
 #ifdef __cplusplus
 }
 #endif
