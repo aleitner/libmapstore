@@ -190,6 +190,13 @@ static int map_files(mapstore_ctx *ctx) {
             } else {
                 free_space = ctx->map_size - row.size + row.free_space;
             }
+        } else {
+            size_to_allocate = row.size;
+        }
+
+        if (f > dv) {
+            map_size = rm;
+            free_space = rm - row.size + row.free_space;
         }
 
         /* Delete old data if new data is coming in*/
