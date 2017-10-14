@@ -13,6 +13,7 @@ MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts) {
     ctx->mapstore_path = NULL;
     ctx->database_path = NULL;
 
+    /* Allocation size is required */
     if (!opts.allocation_size) {
         fprintf(stderr, "Can't initialize mapstore context. \
                 Missing required allocation size\n");
@@ -21,8 +22,9 @@ MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts) {
     }
 
     ctx->allocation_size = opts.allocation_size;
-    ctx->map_size = (opts.map_size) ? opts.map_size : 2147483648;
+    ctx->map_size = (opts.map_size) ? opts.map_size : 2147483648; // Default to 2GB if not map_size provided
 
+    /* Format path for shardata and database n*/
     char *base_path = NULL;
     if (opts.path != NULL) {
         base_path = strdup(opts.path);
@@ -37,6 +39,7 @@ MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts) {
     ctx->mapstore_path = calloc(strlen(base_path) + 9, sizeof(char));
     sprintf(ctx->mapstore_path, "%s%cshards%c", base_path, separator(), separator());
 
+    /* Create map store folder */
     if (create_directory(ctx->mapstore_path) != 0) {
         fprintf(stderr, "Could not create folder: %s\n", ctx->mapstore_path);
         status = 1;
@@ -46,12 +49,14 @@ MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts) {
     ctx->database_path = calloc(strlen(base_path) + 15, sizeof(char));
     sprintf(ctx->database_path, "%s%cshards.sqlite", base_path, separator());
 
+    /* Prepare mapstore tables */
     if (prepare_tables(ctx->database_path) != 0) {
         fprintf(stderr, "Could not create tables\n");
         status = 1;
         goto end_initalize;
     };
 
+    /* Prepare mapstore files and database entries for each file */
     if (map_files(ctx) != 0) {
         fprintf(stderr, "Could not create mmap files\n");
         status = 1;
@@ -123,30 +128,31 @@ MAPSTORE_API json_object *get_store_info(mapstore_ctx *ctx) {
 
 static int map_files(mapstore_ctx *ctx) {
     int status = 0;
-    uint64_t dv = ctx->allocation_size / ctx->map_size;
-    uint64_t rm = ctx->allocation_size % ctx->map_size;
 
-    char mapstore_path[BUFSIZ];        // Path to map_store
-    int f = 0;                          // File name and id in database
+    uint64_t dv = ctx->allocation_size / ctx->map_size; // NUmber of files to be created except smaller tail file
+    uint64_t rm = ctx->allocation_size % ctx->map_size; // Size of smaller tail file
+    int total_mapstores = (rm > 0) ? dv + 2 : dv + 1;   // If there is a remainder make sure we create a row an map for that smaller file
+
+    char mapstore_path[BUFSIZ];         // Path to map_store
     char query[BUFSIZ];                 // SQL query
     sqlite3 *db = NULL;                 // Database
     char *err_msg = NULL;               // error from sqlite3_exec
     json_object *json_positions = NULL; // Positions of free space
 
+    /* Open Database */
     if (sqlite3_open(ctx->database_path, &db) != SQLITE_OK) {
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
         status = 1;
         goto end_map_files;
     }
 
-    /* get previous layout */
+    /* get previous layout for comparing size changes */
     mapstore_layout_row previous_layout;
     if (get_latest_layout_row(db, &previous_layout) != 0) {
         goto end_map_files;
     };
 
-
-    /* Insert table layout. We can keep track of the change over time */
+    /* Insert table layout. We keep track of the change over time so no need to delete old rows */
     memset(query, '\0', BUFSIZ);
     sprintf(query, "INSERT INTO `mapstore_layout` (map_size,allocation_size) VALUES(%llu,%llu);", ctx->map_size, ctx->allocation_size);
     if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
@@ -156,21 +162,34 @@ static int map_files(mapstore_ctx *ctx) {
         goto end_map_files;
     }
 
-    /* Update database to know metadata about each mmap file */
     fprintf(stdout, "%llu files of size %llu\n", dv, ctx->map_size);
+
+    /* Update database to know metadata about each mmap file */
     mapstore_row row;
     uint64_t map_size = (ctx->map_size > previous_layout.map_size) ? ctx->map_size : previous_layout.map_size;
     uint64_t free_space = ctx->map_size;
     uint64_t id;
-    for (f = 1; f < dv + 1; f++) {
+    uint64_t size_to_allocate = ctx->map_size;
 
+    int f = 0; // File id in database
+    for (f = 1; f < total_mapstores; f++) {
+
+        /* Check if mapstore already exists */
         if (get_store_row_by_id(db, f, &row) != 0) {
+            status = 1;
             goto end_map_files;
         };
 
+        printf("row.size: %llu, row.free_space: %llu\n", row.size, row.free_space);
+
         // Adjust new sizes if larger allocations
         if (ctx->allocation_size > previous_layout.allocation_size && row.size < ctx->map_size) {
-            free_space = ctx->map_size - row.size + row.free_space;
+            if (f > dv) {
+                size_to_allocate = rm;
+                free_space = rm - row.size + row.free_space;
+            } else {
+                free_space = ctx->map_size - row.size + row.free_space;
+            }
         }
 
         /* Delete old data if new data is coming in*/
@@ -187,8 +206,9 @@ static int map_files(mapstore_ctx *ctx) {
 
         /* Insert new data */
         memset(query, '\0', BUFSIZ);
-        json_positions = expand_free_space_list(row.free_locations, row.size, ctx->map_size);
+        json_positions = expand_free_space_list(row.free_locations, row.size, size_to_allocate);
         sprintf(query, "INSERT INTO `map_stores` VALUES(%d, '%s', %llu, %llu);", f, json_object_to_json_string(json_positions), free_space, map_size);
+
         if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
             fprintf(stderr, "Failed to insert to table map_stores\n");
             fprintf(stderr, "SQL error: %s\n", err_msg);
@@ -200,55 +220,12 @@ static int map_files(mapstore_ctx *ctx) {
         json_object_put(json_positions);
 
         // Create map file
-        if (ctx->allocation_size > previous_layout.allocation_size && row.size < ctx->map_size) {
+        // Only increase map size. Never decrease.
+        if (ctx->allocation_size > previous_layout.allocation_size && row.size < size_to_allocate) {
             memset(mapstore_path, '\0', BUFSIZ);
             sprintf(mapstore_path, "%s%d.map", ctx->mapstore_path, f);
-            if (create_map_store(mapstore_path, ctx->map_size) != 0) {
-                fprintf(stderr, "Failed to create mapped file: %s of size %llu", ctx->mapstore_path, ctx->map_size);
-                status = 1;
-                goto end_map_files;
-            };
-        }
-    }
-
-    // TODO: Combine this section with previous. Too much reused code
-    /* Update database to know metadata if last mmap file is smaller than rest */
-    if (rm > 0) {
-        if (get_store_row_by_id(db, f+1, &row) != 0) {
-            goto end_map_files;
-        };
-
-        /* Delete old data if new data is coming in*/
-        if (row.free_locations) {
-            memset(query, '\0', BUFSIZ);
-            sprintf(query, "DELETE from map_stores WHERE Id=%d;", f+1);
-            if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
-                fprintf(stderr, "Failed to delete from table map_stores\n");
-                fprintf(stderr, "SQL error: %s\n", err_msg);
-                sqlite3_free(err_msg);
-                json_object_put(json_positions);
-                goto end_map_files;
-            }
-        }
-
-        fprintf(stdout, "1 file of size %llu\n", rm);
-        memset(query, '\0', BUFSIZ);
-        json_positions = expand_free_space_list(row.free_locations, row.size, rm);
-        sprintf(query, "INSERT INTO `map_stores` VALUES(%d, '%s', %llu, %llu);", f+1, json_object_to_json_string(json_positions), rm, rm);
-        if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
-            fprintf(stderr, "Failed to insert to table map_stores\n");
-            fprintf(stderr, "SQL error: %s\n", err_msg);
-            sqlite3_free(err_msg);
-            json_object_put(json_positions);
-            goto end_map_files;
-        }
-        json_object_put(json_positions);
-
-        if (ctx->allocation_size > previous_layout.allocation_size && row.size < ctx->map_size) {
-            memset(mapstore_path, '\0', BUFSIZ);
-            sprintf(mapstore_path, "%s%d.map", ctx->mapstore_path, f+1);
-            if (create_map_store(ctx->mapstore_path, rm) != 0) {
-                fprintf(stderr, "Failed to create mapped file: %s of size %llu", ctx->mapstore_path, rm);
+            if (create_map_store(mapstore_path, size_to_allocate) != 0) {
+                fprintf(stderr, "Failed to create mapped file: %s of size %llu", ctx->mapstore_path, size_to_allocate);
                 status = 1;
                 goto end_map_files;
             };

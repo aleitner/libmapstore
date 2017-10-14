@@ -72,7 +72,7 @@ int main (int argc, char **argv)
     mapstore_ctx ctx;
     mapstore_opts opts;
 
-    opts.allocation_size = 10737418240; // 10GB
+    opts.allocation_size = 20737418240; // 10GB
     opts.map_size = 2147483648;         // 2GB
     opts.path = "/Users/alexleitner/Desktop/storjshare2";
 

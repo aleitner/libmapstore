@@ -64,6 +64,10 @@ int get_latest_layout_row(sqlite3 *db, mapstore_layout_row *row) {
     char column_name[BUFSIZ];
     sqlite3_stmt *stmt = NULL;
 
+    row->id = 0;
+    row->allocation_size = 0;
+    row->map_size = 0;
+
     memset(query, '\0', BUFSIZ);
     sprintf(query, "SELECT * FROM `mapstore_layout` ORDER BY Id DESC LIMIT 1");
     if ((rc = sqlite3_prepare_v2(db, query, BUFSIZ, &stmt, 0)) != SQLITE_OK) {
