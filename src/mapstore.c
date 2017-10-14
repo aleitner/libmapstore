@@ -165,11 +165,10 @@ static int map_files(mapstore_ctx *ctx) {
     fprintf(stdout, "%llu files of size %llu\n", dv, ctx->map_size);
 
     /* Update database to know metadata about each mmap file */
-    mapstore_row row;
-    uint64_t map_size = (ctx->map_size > previous_layout.map_size) ? ctx->map_size : previous_layout.map_size;
-    uint64_t free_space = ctx->map_size;
-    uint64_t id;
-    uint64_t size_to_allocate = ctx->map_size;
+    mapstore_row row;       // Previous Mapstore information
+    uint64_t map_size;      // Size of mapstore allocation
+    uint64_t free_space;    // Free space for mapstore
+    uint64_t id;            // Mapstore Id
 
     int f = 0; // File id in database
     for (f = 1; f < total_mapstores; f++) {
@@ -180,23 +179,18 @@ static int map_files(mapstore_ctx *ctx) {
             goto end_map_files;
         };
 
-        printf("row.size: %llu, row.free_space: %llu\n", row.size, row.free_space);
-
-        // Adjust new sizes if larger allocations
+        // Adjust new map sizes and free space if larger allocations
         if (ctx->allocation_size > previous_layout.allocation_size && row.size < ctx->map_size) {
             if (f > dv) {
-                size_to_allocate = rm;
+                map_size = rm;
                 free_space = rm - row.size + row.free_space;
             } else {
+                map_size = ctx->map_size;
                 free_space = ctx->map_size - row.size + row.free_space;
             }
         } else {
-            size_to_allocate = row.size;
-        }
-
-        if (f > dv) {
-            map_size = rm;
-            free_space = rm - row.size + row.free_space;
+            map_size = row.size;
+            free_space = row.free_space;
         }
 
         /* Delete old data if new data is coming in*/
@@ -213,7 +207,7 @@ static int map_files(mapstore_ctx *ctx) {
 
         /* Insert new data */
         memset(query, '\0', BUFSIZ);
-        json_positions = expand_free_space_list(row.free_locations, row.size, size_to_allocate);
+        json_positions = expand_free_space_list(row.free_locations, row.size, map_size);
         sprintf(query, "INSERT INTO `map_stores` VALUES(%d, '%s', %llu, %llu);", f, json_object_to_json_string(json_positions), free_space, map_size);
 
         if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
@@ -228,11 +222,11 @@ static int map_files(mapstore_ctx *ctx) {
 
         // Create map file
         // Only increase map size. Never decrease.
-        if (ctx->allocation_size > previous_layout.allocation_size && row.size < size_to_allocate) {
+        if (ctx->allocation_size > previous_layout.allocation_size && row.size < map_size) {
             memset(mapstore_path, '\0', BUFSIZ);
             sprintf(mapstore_path, "%s%d.map", ctx->mapstore_path, f);
-            if (create_map_store(mapstore_path, size_to_allocate) != 0) {
-                fprintf(stderr, "Failed to create mapped file: %s of size %llu", ctx->mapstore_path, size_to_allocate);
+            if (create_map_store(mapstore_path, map_size) != 0) {
+                fprintf(stderr, "Failed to create mapped file: %s of size %llu", ctx->mapstore_path, map_size);
                 status = 1;
                 goto end_map_files;
             };
