@@ -154,7 +154,7 @@ static int map_files(mapstore_ctx *ctx) {
 
     /* Insert table layout. We keep track of the change over time so no need to delete old rows */
     memset(query, '\0', BUFSIZ);
-    sprintf(query, "INSERT INTO `mapstore_layout` (map_size,allocation_size) VALUES(%llu,%llu);", ctx->map_size, ctx->allocation_size);
+    sprintf(query, "INSERT INTO `mapstore_layout` (map_size,allocation_size) VALUES(%"PRIu64",%"PRIu64");", ctx->map_size, ctx->allocation_size);
     if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
         fprintf(stderr, "Failed to create mapstore_layout\n");
         fprintf(stderr, "SQL error: %s\n", err_msg);
@@ -162,7 +162,7 @@ static int map_files(mapstore_ctx *ctx) {
         goto end_map_files;
     }
 
-    fprintf(stdout, "%llu files of size %llu\n", dv, ctx->map_size);
+    fprintf(stdout, "%"PRIu64" files of size %"PRIu64"\n", dv, ctx->map_size);
 
     /* Update database to know metadata about each mmap file */
     mapstore_row row;       // Previous Mapstore information
@@ -208,7 +208,7 @@ static int map_files(mapstore_ctx *ctx) {
         /* Insert new data */
         memset(query, '\0', BUFSIZ);
         json_positions = expand_free_space_list(row.free_locations, row.size, map_size);
-        sprintf(query, "INSERT INTO `map_stores` VALUES(%d, '%s', %llu, %llu);", f, json_object_to_json_string(json_positions), free_space, map_size);
+        sprintf(query, "INSERT INTO `map_stores` VALUES(%d, '%s', %"PRIu64", %"PRIu64");", f, json_object_to_json_string(json_positions), free_space, map_size);
 
         if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
             fprintf(stderr, "Failed to insert to table map_stores\n");
@@ -226,7 +226,7 @@ static int map_files(mapstore_ctx *ctx) {
             memset(mapstore_path, '\0', BUFSIZ);
             sprintf(mapstore_path, "%s%d.map", ctx->mapstore_path, f);
             if (create_map_store(mapstore_path, map_size) != 0) {
-                fprintf(stderr, "Failed to create mapped file: %s of size %llu", ctx->mapstore_path, map_size);
+                fprintf(stderr, "Failed to create mapped file: %s of size %"PRIu64"", ctx->mapstore_path, map_size);
                 status = 1;
                 goto end_map_files;
             };

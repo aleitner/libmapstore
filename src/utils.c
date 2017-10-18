@@ -202,7 +202,7 @@ json_object *expand_free_space_list(json_object *old_free_space, uint64_t old_si
     bool needs_new_coordinates = true; // true if we need to add new coordinates. false if we modify old coordinates
     int i = 0;
 
-    printf("Old Size: %llu, New Size: %llu\n", old_size, new_size);
+    printf("Old Size: %"PRIu64", New Size: %"PRIu64"\n", old_size, new_size);
     printf("Old_space: %s\n",json_object_to_json_string(old_free_space));
 
     if (old_free_space == NULL) {
@@ -246,7 +246,7 @@ int create_map_store(char *path, uint64_t size) {
     uint8_t *mmap_store = NULL;         // Memory Mapped map_store
     FILE *fmap_store = fopen(path, "w+");
 
-    printf("Path: %s, size: %llu\n", path, size);
+    printf("Path: %s, size: %"PRIu64"\n", path, size);
 
     int falloc_status = allocatefile(fileno(fmap_store), size);
 
@@ -259,7 +259,6 @@ int create_map_store(char *path, uint64_t size) {
 
     map_file(fileno(fmap_store), size, &mmap_store, false);
     unmap_file(mmap_store, size);
-    fclose(fmap_store);
 
 create_map_store:
     if (fmap_store) {

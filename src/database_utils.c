@@ -127,7 +127,7 @@ int get_store_row_by_id(sqlite3 *db, uint64_t id, mapstore_row *row) {
     row->free_locations = NULL;
 
     memset(query, '\0', BUFSIZ);
-    sprintf(query, "SELECT * FROM `map_stores` WHERE Id = %llu LIMIT 1", id);
+    sprintf(query, "SELECT * FROM `map_stores` WHERE Id = %"PRIu64" LIMIT 1", id);
     if ((rc = sqlite3_prepare_v2(db, query, BUFSIZ, &stmt, 0)) != SQLITE_OK) {
         fprintf(stderr, "sql error: %s\n", sqlite3_errmsg(db));
         status = 1;

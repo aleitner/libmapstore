@@ -12,6 +12,7 @@ static inline void noop() {};
     "  get-store-info            retrieve store info from map store\n"         \
     "  help [cmd]                display help for [cmd]\n\n"                   \
     "options:\n"                                                               \
+    "  -p, --path <path>         Path toe mapstore\n"                          \
     "  -h, --help                output usage information\n"                   \
     "  -v, --version             output the version number\n"                  \
 
@@ -24,10 +25,12 @@ int main (int argc, char **argv)
     int log_level = 0;
     int index = 0;
     int ret = 0; // Variable for checking function return codes
+    char *mapstore_path = NULL;
 
     static struct option cmd_options[] = {
         {"version", no_argument,  0, 'v'},
         {"log", required_argument,  0, 'l'},
+        {"path", required_argument,  0, 'p'},
         {"debug", no_argument,  0, 'd'},
         {"help", no_argument,  0, 'h'},
         {0, 0, 0, 0}
@@ -35,7 +38,7 @@ int main (int argc, char **argv)
 
     opterr = 0;
 
-    while ((c = getopt_long_only(argc, argv, "hdl:vV:",
+    while ((c = getopt_long_only(argc, argv, "hdl:p:vV:",
                                  cmd_options, &index)) != -1) {
         switch (c) {
             case 'l':
@@ -43,6 +46,9 @@ int main (int argc, char **argv)
                 break;
             case 'd':
                 log_level = 4;
+                break;
+            case 'p':
+                mapstore_path = optarg;
                 break;
             case 'V':
             case 'v':
@@ -74,15 +80,16 @@ int main (int argc, char **argv)
 
     opts.allocation_size = 10737418240; // 10GB
     opts.map_size = 2147483648;         // 2GB
-    opts.path = "/Users/alexleitner/Desktop/storjshare2";
+    opts.path = strdup(mapstore_path);
+    printf("Path: %s\n", opts.path);
 
     if (initialize_mapstore(&ctx, opts) != 0) {
         printf("Error initializing mapstore\n");
         return 1;
     }
 
-    printf("ctx.allocation_size: %llu\n", ctx.allocation_size);
-    printf("ctx.map_size: %llu\n", ctx.map_size);
+    printf("ctx.allocation_size: %"PRIu64"\n", ctx.allocation_size);
+    printf("ctx.map_size: %"PRIu64"\n", ctx.map_size);
     printf("ctx.mapstore_path: %s\n", ctx.mapstore_path);
     printf("ctx.database_path: %s\n", ctx.database_path);
     /**
