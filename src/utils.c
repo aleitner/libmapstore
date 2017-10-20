@@ -267,3 +267,21 @@ create_map_store:
 
     return status;
 }
+
+uint64_t get_file_size(int fd) {
+    int ret = 0;
+    struct stat st;
+
+    ret = fstat(fd, &st);
+    if (ret != 0) {
+        printf("Could not get file size\n");
+        return 0;
+    }
+
+    return st.st_size;
+}
+
+uint64_t sector_min(uint64_t data_size) {
+    // TODO: Optimize minimum piece separation for data
+    return 0;
+}

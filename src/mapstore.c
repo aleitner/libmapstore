@@ -95,6 +95,34 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash) {
         goto end_store_data;
     }
 
+    uint64_t data_size = get_file_size(fd);
+    if (data_size <= 0) {
+        status = 1;
+        goto end_store_data;
+    }
+
+    uint64_t min = sector_min(data_size);
+
+    // Determine space available 1:
+    uint64_t total_free_space = 0;
+    if ((status = sum_column_for_table(db, "free_space", "map_stores", &total_free_space)) != 0) {
+        goto end_store_data;
+    }
+
+    // SELECT SUM(free_space) FROM map_stores;
+
+    // Determine space available 2; Also create storage coordinate json:
+    // for each row w/ (freespace > min)
+    //   add each coord where (coord total > min) to json array
+    //   Keep track of coord total space
+
+    // Update map_stores free_locations and free_space
+    // Add file to data_locations
+    // Store data in mmap files
+
+    printf("Data size: %"PRIu64"\n", data_size);
+    printf("total_free_space: %"PRIu64"\n", total_free_space);
+
 end_store_data:
     if (db) {
         sqlite3_close(db);

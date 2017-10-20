@@ -175,3 +175,38 @@ int get_store_row_by_id(sqlite3 *db, uint64_t id, mapstore_row *row) {
 end_mapstore_row:
     return status;
 }
+
+int sum_column_for_table(sqlite3 *db, char *column, char *table, uint64_t *sum) {
+    int status = 0;
+    int rc;
+    char query[BUFSIZ];
+    sqlite3_stmt *stmt = NULL;
+
+    memset(query, '\0', BUFSIZ);
+    sprintf(query, "SELECT SUM(%s) FROM %s;", column, table);
+    if ((rc = sqlite3_prepare_v2(db, query, BUFSIZ, &stmt, 0)) != SQLITE_OK) {
+        fprintf(stderr, "sql error: %s\n", sqlite3_errmsg(db));
+        status = 1;
+        goto end_mapstore_row;
+    } else while((rc = sqlite3_step(stmt)) != SQLITE_DONE) {
+        switch(rc) {
+            case SQLITE_BUSY:
+                fprintf(stderr, "Database is busy\n");
+                sleep(1);
+                break;
+            case SQLITE_ERROR:
+                fprintf(stderr, "step error: %s\n", sqlite3_errmsg(db));
+                status = 1;
+                goto end_mapstore_row;
+            case SQLITE_ROW:
+                {
+                    *sum = sqlite3_column_int64(stmt, 0);
+                }
+        }
+    }
+
+    sqlite3_finalize(stmt);
+
+end_mapstore_row:
+    return status;
+}
