@@ -54,18 +54,59 @@ brew install json-c sqlite libuv
 
 ### FUNCTIONS
 
-```
-int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash);
-int retrieve_data(mapstore_ctx *ctx, uint8_t *hash);
-int delete_data(mapstore_ctx *ctx, uint8_t *hash);
-data_info *get_data_info(mapstore_ctx *ctx, uint8_t *hash);
-store_info *get_store_info(mapstore_ctx *ctx);
+#### Initialize the Mapstore CTX at application start
+
+```C
 int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts);
+```
+
+Example:
+```C
+  mapstore_ctx ctx;
+  mapstore_opts opts;
+
+  opts.allocation_size = 10737418240; // 10GB
+  opts.map_size = 2147483648;         // 2GB
+  opts.path = "~/.store";
+
+  if (initialize_mapstore(&ctx, opts) != 0) {
+      printf("Error initializing mapstore\n");
+      return 1;
+  }
+```
+
+#### Store Data
+
+```C
+int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash);
+```
+
+#### Retrieve Data
+
+```C
+int retrieve_data(mapstore_ctx *ctx, uint8_t *hash);
+```
+
+#### Delete Data
+
+```C
+int delete_data(mapstore_ctx *ctx, uint8_t *hash);
+```
+
+#### Get Map Store Metadata
+
+```C
+store_info *get_store_info(mapstore_ctx *ctx);
+```
+
+#### Get Stored Data's Metadata
+```C
+data_info *get_data_info(mapstore_ctx *ctx, uint8_t *hash);
 ```
 
 ### STRUCTS
 
-```
+```C
 typedef struct  {
   uint64_t allocation_size;
   uint64_t map_size;
@@ -109,14 +150,17 @@ TODO: Add graphical example of architecture
 ```
 
 `data_positions` example:
-```
+
+```JSON
 { shard_piece_index: [file_table_id, start_pos, end_pos], ... }
 { 0: [0,0,9], 1: [1,10,51] }
 ```
+
 - 1st piece of shard is in file with id `0` from positions `0 to 9`
 - 2nd piece of shard is in file with id `1` from positions `10 to 51`
 
 #### File table:
+
 ```
 ----------------------------------------------
 | name | id  | free_locations   | free_space |
@@ -126,7 +170,8 @@ TODO: Add graphical example of architecture
 ```
 
 free_locations example:
-```
-{ [start_pos, end_pos], ... }
-{ [0,9], [45,56], [51,51] }
+
+```JSON
+{ [ [start_pos, end_pos], ... ] }
+{ [ [0,9], [45,56], [51,51] ] }
 ```
