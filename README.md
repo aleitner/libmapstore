@@ -50,6 +50,48 @@ Dependencies:
 brew install json-c sqlite libuv
 ```
 
+## API
+
+### FUNCTIONS
+
+```
+int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash);
+int retrieve_data(mapstore_ctx *ctx, uint8_t *hash);
+int delete_data(mapstore_ctx *ctx, uint8_t *hash);
+data_info *get_data_info(mapstore_ctx *ctx, uint8_t *hash);
+store_info *get_store_info(mapstore_ctx *ctx);
+int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts);
+```
+
+### STRUCTS
+
+```
+typedef struct  {
+  uint64_t allocation_size;
+  uint64_t map_size;
+  char *mapstore_path;
+  char *database_path;
+} mapstore_ctx;
+
+typedef struct  {
+  uint64_t allocation_size;
+  uint64_t map_size;
+  char *path;
+} mapstore_opts;
+
+typedef struct  {
+  uint8_t *hash;
+  char *data_locations_array;
+} data_info;
+
+typedef struct  {
+  uint64_t free_space;
+  uint64_t used_space;
+  uint64_t allocation_size;
+  uint64_t map_size;
+} store_info;
+```
+
 ## Architecture
 
 TODO: Add graphical example of architecture

@@ -101,6 +101,8 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash) {
         goto end_store_data;
     }
 
+    // TODO: Think about making checking if enough space should be an api function
+
     uint64_t min = sector_min(data_size);
 
     // Determine space available 1:
@@ -108,8 +110,6 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash) {
     if ((status = sum_column_for_table(db, "free_space", "map_stores", &total_free_space)) != 0) {
         goto end_store_data;
     }
-
-    // SELECT SUM(free_space) FROM map_stores;
 
     // Determine space available 2; Also create storage coordinate json:
     // for each row w/ (freespace > min)
@@ -146,11 +146,11 @@ MAPSTORE_API int delete_data(mapstore_ctx *ctx, uint8_t *hash) {
     return 0;
 }
 
-MAPSTORE_API json_object *get_data_info(mapstore_ctx *ctx, uint8_t *hash) {
+MAPSTORE_API data_info *get_data_info(mapstore_ctx *ctx, uint8_t *hash) {
     fprintf(stdout, "I'm here!");
 }
 
-MAPSTORE_API json_object *get_store_info(mapstore_ctx *ctx) {
+MAPSTORE_API store_info *get_store_info(mapstore_ctx *ctx) {
     fprintf(stdout, "I'm here!");;
 }
 

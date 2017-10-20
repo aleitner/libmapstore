@@ -47,11 +47,23 @@ typedef struct  {
   char *path;
 } mapstore_opts;
 
+typedef struct  {
+  uint8_t *hash;
+  char *data_locations_array;
+} data_info;
+
+typedef struct  {
+  uint64_t free_space;
+  uint64_t used_space;
+  uint64_t allocation_size;
+  uint64_t map_size;
+} store_info;
+
 MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash);
 MAPSTORE_API int retrieve_data(mapstore_ctx *ctx, uint8_t *hash);
 MAPSTORE_API int delete_data(mapstore_ctx *ctx, uint8_t *hash);
-MAPSTORE_API json_object *get_data_info(mapstore_ctx *ctx, uint8_t *hash);
-MAPSTORE_API json_object *get_store_info(mapstore_ctx *ctx);
+MAPSTORE_API data_info *get_data_info(mapstore_ctx *ctx, uint8_t *hash);
+MAPSTORE_API store_info *get_store_info(mapstore_ctx *ctx);
 MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts);
 
 static int map_files(mapstore_ctx *ctx);
