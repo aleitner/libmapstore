@@ -80,7 +80,7 @@ int main (int argc, char **argv)
 
     opts.allocation_size = 10737418240; // 10GB
     opts.map_size = 2147483648;         // 2GB
-    opts.path = strdup(mapstore_path);
+    opts.path = (mapstore_path != NULL) ? strdup(mapstore_path) : NULL;
     printf("Path: %s\n", opts.path);
 
     if (initialize_mapstore(&ctx, opts) != 0) {
