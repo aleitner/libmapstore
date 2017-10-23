@@ -111,8 +111,6 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash) {
         goto end_store_data;
     }
 
-    json_object *positions = json_data_positions_object(0, 1, 0, 123123);
-    printf("new_space: %s\n",json_object_to_json_string(positions));
     // Determine space available 2; Also create storage coordinate json:
     // for each row w/ (freespace > min)
     //   add each coord where (coord total > min) to json array
