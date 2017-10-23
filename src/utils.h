@@ -46,7 +46,8 @@ uint64_t get_file_size(int fd);
 uint64_t sector_min(uint64_t data_size);
 
 /* Json Functions */
-json_object *create_json_positions_array(uint64_t start, uint64_t end);
+json_object *json_free_space_array(uint64_t start, uint64_t end);
+json_object *json_data_positions_object(uint64_t index, uint64_t file_id, start, uint64_t end);
 json_object *expand_free_space_list(json_object *old_free_space, uint64_t old_size, uint64_t new_size);
 
 static inline char separator()

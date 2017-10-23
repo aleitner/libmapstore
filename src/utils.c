@@ -181,14 +181,29 @@ int create_directory(char *path) {
 #endif
 }
 
-json_object *create_json_positions_array(uint64_t start, uint64_t end) {
+json_object *json_free_space_array(uint64_t start, uint64_t end) {
     json_object *jarray = json_object_new_array();
-    json_object *first = json_object_new_int64(start);
-    json_object *final = json_object_new_int64(end);
-    json_object_array_add(jarray,first);
-    json_object_array_add(jarray,final);
+    json_object_array_add(jarray, json_object_new_int64(start));
+    json_object_array_add(jarray, json_object_new_int64(end));
 
     return jarray;
+}
+
+json_object *json_data_positions_object(uint64_t index, uint64_t file_id, start, uint64_t end) {
+    // Limitation of json-c. Can't have an integer as a key
+    char i[21];
+    memset(i, '\0', 21);
+    sprintf(i, "%"PRIu64, index);
+
+    json_object *jobj = json_object_new_object();
+    json_object *jarray = json_object_new_array();
+    json_object_array_add(jarray, json_object_new_int64(file_id));
+    json_object_array_add(jarray, json_object_new_int64(start));
+    json_object_array_add(jarray, json_object_new_int64(end));
+
+    json_object_object_add(jobj, i, jarray);
+
+    return jobj;
 }
 
 json_object *expand_free_space_list(json_object *old_free_space, uint64_t old_size, uint64_t new_size) {
@@ -206,7 +221,7 @@ json_object *expand_free_space_list(json_object *old_free_space, uint64_t old_si
     printf("Old_space: %s\n",json_object_to_json_string(old_free_space));
 
     if (old_free_space == NULL) {
-        new_jarray = create_json_positions_array(0, new_size - 1);
+        new_jarray = json_free_space_array(0, new_size - 1);
         json_object_array_add(new_free_space, new_jarray);
 
         return new_free_space;
@@ -220,7 +235,7 @@ json_object *expand_free_space_list(json_object *old_free_space, uint64_t old_si
 
             /* are we changing anything? */
             if (old_final == old_size - 1) {
-                new_jarray = create_json_positions_array(old_first, new_size - 1);
+                new_jarray = json_free_space_array(old_first, new_size - 1);
                 needs_new_coordinates = false;
                 json_object_array_add(new_free_space, new_jarray);
             } else {
@@ -229,7 +244,7 @@ json_object *expand_free_space_list(json_object *old_free_space, uint64_t old_si
         }
 
         if (needs_new_coordinates) {
-            new_jarray = create_json_positions_array(old_size - 1, new_size - 1);
+            new_jarray = json_free_space_array(old_size - 1, new_size - 1);
             json_object_array_add(new_free_space, new_jarray);
         }
     } else {
