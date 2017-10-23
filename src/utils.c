@@ -192,21 +192,12 @@ json_object *json_free_space_array(uint64_t start, uint64_t end) {
     return jarray;
 }
 
-json_object *json_data_positions_object(uint64_t index, uint64_t file_id, uint64_t start, uint64_t end) {
-    // Limitation of json-c. Can't have an integer as a key
-    char i[21];
-    memset(i, '\0', 21);
-    sprintf(i, "%"PRIu64, index);
-
-    json_object *jobj = json_object_new_object();
+json_object *json_data_positions_array(uint64_t file_id, uint64_t start, uint64_t end) {
     json_object *jarray = json_object_new_array();
     json_object_array_add(jarray, json_object_new_int64(file_id));
     json_object_array_add(jarray, json_object_new_int64(start));
     json_object_array_add(jarray, json_object_new_int64(end));
-
-    json_object_object_add(jobj, i, jarray);
-
-    return jobj;
+    return jarray;
 }
 
 json_object *expand_free_space_list(json_object *old_free_space, uint64_t old_size, uint64_t new_size) {

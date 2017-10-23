@@ -110,6 +110,60 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash) {
     }
 
     // Determine space available 2; Also create storage coordinate json:
+    mapstore_row row;                    // Mapstore information
+    uint64_t f = 0;                           // Mapstore index
+    uint64_t fla = 0;                         // Free location array index
+    json_object *location_array = NULL;  // json object containing free location array
+    uint64_t first;                      // free location start for array
+    uint64_t final;                      // free location end for array
+    json_object *position = NULL;       // Location of piece of data
+    json_object *map_coordinates = json_object_new_object(); // All Locations to store data in map store
+    uint64_t remaining = data_size;      //
+    uint64_t space_available = 0;        //
+    uint64_t data_index = 0;             //
+    uint64_t space_to_use = 0;           //
+    char data_index_as_string[21];                 //
+
+    for (f = 1; f < ctx->total_mapstores; f++) {
+        if (get_store_row_by_id(db, f, &row) != 0) {
+            status = 1;
+            goto end_store_data;
+        };
+
+        if (row.free_space > min) {
+            for (fla = 0; fla < json_object_array_length(row.free_locations); fla++) {
+                location_array = json_object_array_get_idx(row.free_locations, fla);
+                first = json_object_get_int64(json_object_array_get_idx(location_array, 0));
+                final = json_object_get_int64(json_object_array_get_idx(location_array, 1));
+                space_available = final - first + 1;
+                if (space_available > min) {
+                    // If we are storing less than the free space available for in this sector
+                    if (space_available > remaining) {
+                        space_to_use = remaining;
+                        final = first + space_to_use;
+                    } else {
+                        space_to_use = space_available;
+                    }
+                    remaining -= space_to_use;
+                    position = json_data_positions_array(f, first, final);
+                    // Limitation of json-c. Can't have an integer as a key
+                    memset(data_index_as_string, '\0', 21);
+                    sprintf(data_index_as_string, "%"PRIu64, data_index);
+                    json_object_object_add(map_coordinates, data_index_as_string, position);
+                    data_index += 1;
+
+                    if(remaining == 0) {
+                        break;
+                    }
+                }
+            }
+        }
+        if(remaining == 0) {
+            break;
+        }
+    }
+
+    printf("map_coordinates: %s\n", json_object_to_json_string(map_coordinates));
     // for each row w/ (freespace > min)
     //   add each coord where (coord total > min) to json array
     //   Keep track of coord total space
@@ -162,7 +216,7 @@ static int map_files(mapstore_ctx *ctx) {
 
     uint64_t dv = ctx->allocation_size / ctx->map_size; // NUmber of files to be created except smaller tail file
     uint64_t rm = ctx->allocation_size % ctx->map_size; // Size of smaller tail file
-    int total_mapstores = (rm > 0) ? dv + 2 : dv + 1;   // If there is a remainder make sure we create a row an map for that smaller file
+    ctx->total_mapstores = (rm > 0) ? dv + 2 : dv + 1;   // If there is a remainder make sure we create a row an map for that smaller file
 
     char mapstore_path[BUFSIZ];         // Path to map_store
     char query[BUFSIZ];                 // SQL query
@@ -202,7 +256,7 @@ static int map_files(mapstore_ctx *ctx) {
     uint64_t id;            // Mapstore Id
 
     int f = 0; // File id in database
-    for (f = 1; f < total_mapstores; f++) {
+    for (f = 1; f < ctx->total_mapstores; f++) {
 
         /* Check if mapstore already exists */
         if (get_store_row_by_id(db, f, &row) != 0) {

@@ -39,6 +39,7 @@ extern "C" {
 typedef struct  {
   uint64_t allocation_size;
   uint64_t map_size;
+  uint64_t total_mapstores;
   char *mapstore_path;
   char *database_path;
 } mapstore_ctx;
