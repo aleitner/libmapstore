@@ -31,8 +31,10 @@ extern "C" {
 #include <string.h>
 #include <json-c/json.h>
 #include <sqlite3.h>
-
 #include <inttypes.h>
+
+#include "utils.h"
+#include "database_utils.h"
 
 typedef struct  {
   uint64_t allocation_size;

@@ -37,6 +37,9 @@ ssize_t pwrite(int fd, const void *buf, size_t count, uint64_t offset);
 #include <sys/mman.h>
 #endif
 
+#include "utils.h"
+#include "database_utils.h"
+
 int allocatefile(int fd, uint64_t length);
 int unmap_file(uint8_t *map, uint64_t filesize);
 int map_file(int fd, uint64_t filesize, uint8_t **map, bool read_only);
@@ -47,7 +50,7 @@ uint64_t sector_min(uint64_t data_size);
 
 /* Json Functions */
 json_object *json_free_space_array(uint64_t start, uint64_t end);
-json_object *json_data_positions_object(uint64_t index, uint64_t file_id, start, uint64_t end);
+json_object *json_data_positions_object(uint64_t index, uint64_t file_id, uint64_t start, uint64_t end);
 json_object *expand_free_space_list(json_object *old_free_space, uint64_t old_size, uint64_t new_size);
 
 static inline char separator()

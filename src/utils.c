@@ -182,6 +182,9 @@ int create_directory(char *path) {
 }
 
 json_object *json_free_space_array(uint64_t start, uint64_t end) {
+    if (end < start) {
+        return NULL;
+    }
     json_object *jarray = json_object_new_array();
     json_object_array_add(jarray, json_object_new_int64(start));
     json_object_array_add(jarray, json_object_new_int64(end));
@@ -189,7 +192,7 @@ json_object *json_free_space_array(uint64_t start, uint64_t end) {
     return jarray;
 }
 
-json_object *json_data_positions_object(uint64_t index, uint64_t file_id, start, uint64_t end) {
+json_object *json_data_positions_object(uint64_t index, uint64_t file_id, uint64_t start, uint64_t end) {
     // Limitation of json-c. Can't have an integer as a key
     char i[21];
     memset(i, '\0', 21);

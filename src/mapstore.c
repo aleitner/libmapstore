@@ -1,6 +1,4 @@
 #include "mapstore.h"
-#include "utils.h"
-#include "database_utils.h"
 
 /**
 * Initialize everything
