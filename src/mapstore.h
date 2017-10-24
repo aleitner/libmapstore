@@ -70,6 +70,7 @@ MAPSTORE_API store_info *get_store_info(mapstore_ctx *ctx);
 MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts);
 
 static int map_files(mapstore_ctx *ctx);
+static int get_map_plan(mapstore_ctx *ctx, uint64_t data_size, json_object *map_coordinates);
 
 #ifdef __cplusplus
 }
