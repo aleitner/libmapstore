@@ -92,9 +92,12 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash) {
         goto end_store_data;
     }
 
-    json_object *map_coordinates = json_object_new_array(); // All Locations to store data in map store
+    json_object *map_coordinates = json_object_new_object(); // All Locations to store data in map store
     // Determine space available
-    status = get_map_plan(ctx, data_size, map_coordinates);
+    if((status = get_map_plan(ctx, data_size, map_coordinates)) != 0) {
+        status = 1;
+        goto end_store_data;
+    }
 
     printf("map_coordinates: %s\n", json_object_to_json_string(map_coordinates));
 
@@ -157,51 +160,20 @@ static int get_map_plan(mapstore_ctx *ctx, uint64_t data_size, json_object *map_
 
         // If row doesn't have enough free space don't use it.
         if (row.free_space > sector_min(data_size)) {
-            remaining -= store_positions(f, row.free_locations, remaining, map_coordinates);
+            remaining -= prepare_store_positions(f, row.free_locations, remaining, map_coordinates);
         }
+    }
+
+    if (remaining > 0 ) {
+        printf("Not enough space\n");
+        status = 1;
+        goto end_map_plan;
     }
 
 end_map_plan:
     if (db) {
         sqlite3_close(db);
     }
-}
-
-static uint64_t store_positions(uint64_t store_id, json_object *free_locations_arr, uint64_t data_size, json_object *map_coordinates) {
-    uint64_t sector_size = 0;            //
-    uint64_t space_to_use = 0;           //
-    json_object *location_array = NULL;  // json object containing free location array
-    uint64_t first;                      // free location start for array
-    uint64_t final;                      // free location end for array
-    uint64_t total_used = 0;
-    uint64_t remaining = data_size;
-
-    for (uint64_t arr_i = 0; arr_i < json_object_array_length(free_locations_arr); arr_i++) {
-        if (remaining <= 0) {
-            break;
-        }
-
-        location_array = json_object_array_get_idx(free_locations_arr, arr_i);
-        first = json_object_get_int64(json_object_array_get_idx(location_array, 0));
-        final = json_object_get_int64(json_object_array_get_idx(location_array, 1));
-        sector_size = final - first + 1;
-
-        // If there isn't enough space in the free_space sector don't use it.
-        if (sector_size < sector_min(data_size)) {
-            continue;
-        }
-
-        // Calculate the amount of space being stored
-        space_to_use = (sector_size > remaining) ? remaining : sector_size;
-        final = (sector_size > remaining) ? first + space_to_use - 1 : final;
-        total_used += space_to_use;
-        remaining -= 1;
-
-        // Create coordinates for data piece to be stored and add to map_coordinates
-        json_object_array_add(map_coordinates, json_data_positions_array(store_id, first, final));
-    }
-
-    return total_used;
 }
 
 static int map_files(mapstore_ctx *ctx) {

@@ -47,7 +47,7 @@ int create_directory(char *path);
 int create_map_store(char *path, uint64_t size);
 uint64_t get_file_size(int fd);
 uint64_t sector_min(uint64_t data_size);
-
+uint64_t prepare_store_positions(uint64_t store_id, json_object *free_locations_arr, uint64_t data_size, json_object *map_coordinates);
 /* Json Functions */
 json_object *json_free_space_array(uint64_t start, uint64_t end);
 json_object *json_data_positions_array(uint64_t file_id, uint64_t start, uint64_t end);
