@@ -59,6 +59,11 @@ int main (int argc, char **argv)
                 printf(HELP_TEXT);
                 exit(0);
                 break;
+            default:
+                printf("%c is not a recognized option\n\n", c);
+                printf(HELP_TEXT);
+                exit(1);
+            break;
         }
     }
 
@@ -81,7 +86,6 @@ int main (int argc, char **argv)
     opts.allocation_size = 10737418240; // 10GB
     opts.map_size = 2147483648;         // 2GB
     opts.path = (mapstore_path != NULL) ? strdup(mapstore_path) : NULL;
-    printf("Path: %s\n", opts.path);
 
     if (initialize_mapstore(&ctx, opts) != 0) {
         printf("Error initializing mapstore\n");
@@ -121,6 +125,7 @@ int main (int argc, char **argv)
         uint8_t *data_hash = NULL;
         ret = get_file_hash(fileno(data_file), &data_hash);
         if (ret != 0) {
+            printf("Could not get file hash\n");
             status = 1;
             goto end_store;
         }
