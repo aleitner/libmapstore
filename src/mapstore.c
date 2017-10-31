@@ -85,6 +85,7 @@ end_initalize:
 MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash) {
     fprintf(stdout, "Begin Store Data\n");
     int status = 0;
+    json_object *map_coordinates = NULL;
 
     uint64_t data_size = get_file_size(fd);
     if (data_size <= 0) {
@@ -92,7 +93,7 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash) {
         goto end_store_data;
     }
 
-    json_object *map_coordinates = json_object_new_object(); // All Locations to store data in map store
+    map_coordinates = json_object_new_object(); // All Locations to store data in map store
     // Determine space available
     if((status = get_map_plan(ctx, data_size, map_coordinates)) != 0) {
         status = 1;
@@ -108,6 +109,10 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash) {
     printf("Data size: %"PRIu64"\n", data_size);
 
 end_store_data:
+    if (map_coordinates) {
+        json_object_put(map_coordinates);
+    }
+
     return status;
 }
 
