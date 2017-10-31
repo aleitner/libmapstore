@@ -95,6 +95,7 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash) {
 
     map_coordinates = json_object_new_object(); // All Locations to store data in map store
     // Determine space available
+
     if((status = get_map_plan(ctx, data_size, map_coordinates)) != 0) {
         status = 1;
         goto end_store_data;
@@ -107,6 +108,8 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash) {
     // Store data in mmap files
 
     printf("Data size: %"PRIu64"\n", data_size);
+
+    printf("Status: %d\n", status);
 
 end_store_data:
     if (map_coordinates) {
@@ -156,17 +159,22 @@ static int get_map_plan(mapstore_ctx *ctx, uint64_t data_size, json_object *map_
 
     mapstore_row row;
     uint64_t remaining = data_size;
+    uint64_t min = 0;
     // Get info for each map store
+    char where[BUFSIZ];
     for (uint64_t f = 1; f < ctx->total_mapstores; f++) {
-        if (get_store_row_by_id(db, f, &row) != 0) {
+        uint64_t min = (remaining > sector_min(data_size)) ? sector_min(data_size) : remaining;
+        memset(where, '\0', BUFSIZ);
+        sprintf(where, "WHERE Id = %"PRIu64" AND free_space > %"PRIu64, f, min);
+        
+        if (get_store_rows(db, where, &row) != 0) {
             status = 1;
             goto end_map_plan;
         };
 
         // If row doesn't have enough free space don't use it.
-        if (row.free_space > sector_min(data_size)) {
-            remaining -= prepare_store_positions(f, row.free_locations, remaining, map_coordinates);
-        }
+        remaining -= prepare_store_positions(f, row.free_locations, remaining, map_coordinates);
+
     }
 
     if (remaining > 0 ) {
@@ -179,6 +187,8 @@ end_map_plan:
     if (db) {
         sqlite3_close(db);
     }
+
+    return status;
 }
 
 static int map_files(mapstore_ctx *ctx) {
@@ -230,11 +240,13 @@ static int map_files(mapstore_ctx *ctx) {
     uint64_t free_space;    // Free space for mapstore
     uint64_t id;            // Mapstore Id
 
-    int f = 0; // File id in database
-    for (f = 1; f < ctx->total_mapstores; f++) {
+    for (uint64_t f = 1; f < ctx->total_mapstores; f++) {
 
         /* Check if mapstore already exists */
-        if (get_store_row_by_id(db, f, &row) != 0) {
+        char where[BUFSIZ];
+        memset(where, '\0', BUFSIZ);
+        sprintf(where, "WHERE Id = %"PRIu64, f);
+        if (get_store_rows(db, where, &row) != 0) {
             status = 1;
             goto end_map_files;
         };
@@ -256,7 +268,7 @@ static int map_files(mapstore_ctx *ctx) {
         /* Delete old data if new data is coming in*/
         if (row.free_locations) {
             memset(query, '\0', BUFSIZ);
-            sprintf(query, "DELETE from map_stores WHERE Id=%d;", f);
+            sprintf(query, "DELETE from map_stores WHERE Id=%"PRIu64";", f);
             if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
                 fprintf(stderr, "Failed to delete from table map_stores\n");
                 fprintf(stderr, "SQL error: %s\n", err_msg);
@@ -268,7 +280,7 @@ static int map_files(mapstore_ctx *ctx) {
         /* Insert new data */
         memset(query, '\0', BUFSIZ);
         json_positions = expand_free_space_list(row.free_locations, row.size, map_size);
-        sprintf(query, "INSERT INTO `map_stores` VALUES(%d, '%s', %"PRIu64", %"PRIu64");", f, json_object_to_json_string(json_positions), free_space, map_size);
+        sprintf(query, "INSERT INTO `map_stores` VALUES(%"PRIu64", '%s', %"PRIu64", %"PRIu64");", f, json_object_to_json_string(json_positions), free_space, map_size);
 
         if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
             fprintf(stderr, "Failed to insert to table map_stores\n");
@@ -284,7 +296,7 @@ static int map_files(mapstore_ctx *ctx) {
         // Only increase map size. Never decrease.
         if (ctx->allocation_size > previous_layout.allocation_size && row.size < map_size) {
             memset(mapstore_path, '\0', BUFSIZ);
-            sprintf(mapstore_path, "%s%d.map", ctx->mapstore_path, f);
+            sprintf(mapstore_path, "%s%"PRIu64".map", ctx->mapstore_path, f);
             if (create_map_store(mapstore_path, map_size) != 0) {
                 fprintf(stderr, "Failed to create mapped file: %s of size %"PRIu64"", ctx->mapstore_path, map_size);
                 status = 1;

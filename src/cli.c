@@ -123,15 +123,19 @@ int main (int argc, char **argv)
         }
 
         uint8_t *data_hash = NULL;
-        ret = get_file_hash(fileno(data_file), &data_hash);
-        if (ret != 0) {
+        if ((ret = get_file_hash(fileno(data_file), &data_hash)) != 0) {
             printf("Could not get file hash\n");
             status = 1;
             goto end_store;
         }
 
         printf("Data hash: %s\n", data_hash);
-        store_data(&ctx, fileno(data_file), data_hash);
+
+        if ((ret = store_data(&ctx, fileno(data_file), data_hash))!= 0) {
+            printf("Could not store file\n");
+            status = 1;
+            goto end_store;
+        }
 
         /* Clean up store command */
 end_store:
