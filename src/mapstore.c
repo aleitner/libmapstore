@@ -85,7 +85,14 @@ end_initalize:
 MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash) {
     fprintf(stdout, "Begin Store Data\n");
     int status = 0;
-    json_object *map_coordinates = NULL;
+    json_object *map_plan = json_object_new_object();
+    sqlite3 *db = NULL;
+
+    if (sqlite3_open(ctx->database_path, &db) != SQLITE_OK) {
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        status = 1;
+        goto end_store_data;
+    }
 
     uint64_t data_size = get_file_size(fd);
     if (data_size <= 0) {
@@ -93,14 +100,18 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash) {
         goto end_store_data;
     }
 
-    map_coordinates = json_object_new_object(); // All Locations to store data in map store
     // Determine space available
-    if((status = get_map_plan(ctx, data_size, map_coordinates)) != 0) {
+    if((status = get_map_plan(db, ctx->total_mapstores, data_size, map_plan)) != 0) {
         status = 1;
         goto end_store_data;
     }
 
-    printf("map_coordinates: %s\n", json_object_to_json_string(map_coordinates));
+    printf("map_coordinates: %s\n", json_object_to_json_string(map_plan));
+
+    // if((status = update_store_with_plan(db, map_plan)) != 0) {
+    //     status = 1;
+    //     goto end_store_data;
+    // }
 
     // Update map_stores free_locations and free_space
     // Add file to data_locations
@@ -109,8 +120,12 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash) {
     printf("Data size: %"PRIu64"\n", data_size);
 
 end_store_data:
-    if (map_coordinates) {
-        json_object_put(map_coordinates);
+    if (map_plan) {
+        json_object_put(map_plan);
+    }
+
+    if (db) {
+        sqlite3_close(db);
     }
 
     return status;
@@ -139,14 +154,9 @@ MAPSTORE_API store_info *get_store_info(mapstore_ctx *ctx) {
     fprintf(stdout, "I'm here!");;
 }
 
-static int get_map_plan(mapstore_ctx *ctx, uint64_t data_size, json_object *map_coordinates) {
+static int get_map_plan(sqlite3 *db, uint64_t total_stores, uint64_t data_size, json_object *map_coordinates) {
     int status = 0;
-    sqlite3 *db = NULL;
-    if (sqlite3_open(ctx->database_path, &db) != SQLITE_OK) {
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
-        status = 1;
-        goto end_map_plan;
-    }
+    char *where = NULL;
 
     // Determine space available 1:
     uint64_t total_free_space = 0;
@@ -158,11 +168,10 @@ static int get_map_plan(mapstore_ctx *ctx, uint64_t data_size, json_object *map_
     uint64_t remaining = data_size;
     uint64_t min = 0;
     // Get info for each map store
-    char where[BUFSIZ];
-    for (uint64_t f = 1; f < ctx->total_mapstores; f++) {
+
+    for (uint64_t f = 1; f < total_stores; f++) {
         uint64_t min = (remaining > sector_min(data_size)) ? sector_min(data_size) : remaining;
-        memset(where, '\0', BUFSIZ);
-        sprintf(where, "WHERE Id = %"PRIu64" AND free_space > %"PRIu64, f, min);
+        asprintf(&where, "WHERE Id = %"PRIu64" AND free_space > %"PRIu64, f, min);
 
         if (get_store_rows(db, where, &row) != 0) {
             status = 1;
@@ -184,8 +193,8 @@ static int get_map_plan(mapstore_ctx *ctx, uint64_t data_size, json_object *map_
     }
 
 end_map_plan:
-    if (db) {
-        sqlite3_close(db);
+    if (where) {
+        free(where);
     }
 
     return status;

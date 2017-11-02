@@ -322,6 +322,14 @@ uint64_t prepare_store_positions(uint64_t store_id, json_object *free_locations_
         updated_free_positions = json_object_new_array();
     }
 
+    // Get previously added store_positions
+    json_object *used_space = NULL;
+    json_object *used_space_obj = json_object_new_object();
+    json_bool has_used_space = json_object_object_get_ex(map_coordinates, "used_space", &used_space);
+    if (!has_used_space) {
+        used_space = json_object_new_array();
+    }
+
     for (uint64_t arr_i = 0; arr_i < json_object_array_length(free_locations_arr); arr_i++) {
 
         location_array = json_object_array_get_idx(free_locations_arr, arr_i);
@@ -356,6 +364,8 @@ uint64_t prepare_store_positions(uint64_t store_id, json_object *free_locations_
         json_object_object_add(map_coordinates, "store_positions", store_pos_object);
         json_object_object_add(store_free_object, store_id_str, updated_free_positions);
         json_object_object_add(map_coordinates, "free_positions", store_free_object);
+        json_object_object_add(used_space_obj, store_id_str, json_object_new_int64(total_used));
+        json_object_object_add(map_coordinates, "used_space", used_space_obj);
     }
 
     free(store_id_str);
