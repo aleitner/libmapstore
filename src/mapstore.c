@@ -95,7 +95,6 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash) {
 
     map_coordinates = json_object_new_object(); // All Locations to store data in map store
     // Determine space available
-
     if((status = get_map_plan(ctx, data_size, map_coordinates)) != 0) {
         status = 1;
         goto end_store_data;
@@ -108,8 +107,6 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash) {
     // Store data in mmap files
 
     printf("Data size: %"PRIu64"\n", data_size);
-
-    printf("Status: %d\n", status);
 
 end_store_data:
     if (map_coordinates) {
@@ -166,19 +163,22 @@ static int get_map_plan(mapstore_ctx *ctx, uint64_t data_size, json_object *map_
         uint64_t min = (remaining > sector_min(data_size)) ? sector_min(data_size) : remaining;
         memset(where, '\0', BUFSIZ);
         sprintf(where, "WHERE Id = %"PRIu64" AND free_space > %"PRIu64, f, min);
-        
+
         if (get_store_rows(db, where, &row) != 0) {
             status = 1;
             goto end_map_plan;
         };
 
         // If row doesn't have enough free space don't use it.
-        remaining -= prepare_store_positions(f, row.free_locations, remaining, map_coordinates);
+        if (remaining <= 0) {
+            break;
+        }
 
+        remaining -= prepare_store_positions(f, row.free_locations, remaining, map_coordinates);
     }
 
     if (remaining > 0 ) {
-        printf("Not enough space\n");
+        printf("Not free enough space in mapstore\n");
         status = 1;
         goto end_map_plan;
     }

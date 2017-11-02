@@ -300,47 +300,64 @@ uint64_t prepare_store_positions(uint64_t store_id, json_object *free_locations_
     uint64_t space_to_use = 0;           //
     json_object *location_array = NULL;  // json object containing free location array
     uint64_t first;                      // free location start for array
-    uint64_t final;                      // free location end for array
+    uint64_t old_final, new_final;       // free location end for array
     uint64_t total_used = 0;
     uint64_t remaining = data_size;
-    json_object *updated_free_locations_arr = json_object_new_array();
+    char *store_id_str;
+    asprintf(&store_id_str, "%"PRIu64, store_id);
 
     // Get previously added store_positions
     json_object *store_positions = NULL;
+    json_object *store_pos_object = json_object_new_object();
     json_bool has_store_pos = json_object_object_get_ex(map_coordinates, "store_positions", &store_positions);
     if (!has_store_pos) {
         store_positions = json_object_new_array();
     }
 
+    // Get list of updated freespaces
+    json_object *updated_free_positions = NULL;
+    json_object *store_free_object = json_object_new_object();
+    json_bool has_free_pos = json_object_object_get_ex(map_coordinates, "free_positions", &updated_free_positions);
+    if (!has_free_pos) {
+        updated_free_positions = json_object_new_array();
+    }
+
     for (uint64_t arr_i = 0; arr_i < json_object_array_length(free_locations_arr); arr_i++) {
-        if (remaining <= 0) {
-            break;
-        }
 
         location_array = json_object_array_get_idx(free_locations_arr, arr_i);
         first = json_object_get_int64(json_object_array_get_idx(location_array, 0));
-        final = json_object_get_int64(json_object_array_get_idx(location_array, 1));
-        sector_size = final - first + 1;
+        old_final = json_object_get_int64(json_object_array_get_idx(location_array, 1));
+        sector_size = old_final - first + 1;
 
         // If there isn't enough space in the free_space sector don't use it.
-        if (sector_size < sector_min(data_size)) {
+        if (remaining <= 0 || sector_size < sector_min(data_size)) {
+            json_object_array_add(updated_free_positions, json_free_space_array(first, old_final));
             continue;
         }
 
         // Calculate the amount of space to be stored
         space_to_use = (sector_size > remaining) ? remaining : sector_size;
-        final = (sector_size > remaining) ? first + space_to_use - 1 : final;
+        new_final = (sector_size > remaining) ? first + space_to_use - 1 : old_final;
         total_used += space_to_use;
         remaining -= space_to_use;
 
         // Create coordinates for data piece to be stored and add to store_positions array
-        json_object_array_add(store_positions, json_data_positions_array(store_id, first, final));
+        json_object_array_add(store_positions, json_free_space_array(first, new_final));
+
+        // If modifying the free space
+        if (old_final != new_final) {
+            json_object_array_add(updated_free_positions, json_free_space_array(new_final + 1, old_final));
+        }
     }
 
     // Only add to store positions if we actually have positions
     if (space_to_use > 0) {
-        json_object_object_add(map_coordinates, "store_positions", store_positions);
+        json_object_object_add(store_pos_object, store_id_str, store_positions);
+        json_object_object_add(map_coordinates, "store_positions", store_pos_object);
+        json_object_object_add(store_free_object, store_id_str, updated_free_positions);
+        json_object_object_add(map_coordinates, "free_positions", store_free_object);
     }
 
+    free(store_id_str);
     return total_used;
 }
