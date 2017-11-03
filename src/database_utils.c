@@ -249,7 +249,7 @@ int insert_to(sqlite3 *db, char *table, char *set) {
     return status;
 }
 
-int hash_exists_in_mapstore(sqlite3 *db, char *hash) {
+int hash_exists_in_mapstore(sqlite3 *db, uint8_t *hash) {
     int status = 0;
     int rc;
     char query[BUFSIZ];
@@ -281,7 +281,7 @@ int hash_exists_in_mapstore(sqlite3 *db, char *hash) {
                         strcpy(column_name, sqlite3_column_name(stmt, i));
 
                         if (strcmp(column_name, "hash") == 0) {
-                            if (strcmp((const char*)sqlite3_column_text(stmt, i), hash) == 0) {
+                            if (strcmp((const char *)sqlite3_column_text(stmt, i), (const char *)hash) == 0) {
                                 status = 1;
                             };
                         }

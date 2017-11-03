@@ -52,6 +52,6 @@ int get_store_rows(sqlite3 *db, char *where, mapstore_row *row);
 int sum_column_for_table(sqlite3 *db, char *column, char *table, uint64_t *sum);
 int update_map_store(sqlite3 *db, char *where, char *set);
 int insert_to(sqlite3 *db, char *table, char *set);
-int hash_exists_in_mapstore(sqlite3 *db, char *hash);
+int hash_exists_in_mapstore(sqlite3 *db, uint8_t *hash);
 
 #endif /* MAPSTORE_DATABASE_UTILS_H */

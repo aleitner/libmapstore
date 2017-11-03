@@ -142,7 +142,7 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash) {
 
     // Add file to data_locations
     memset(set, '\0', BUFSIZ);
-    sprintf(set, "(hash,size,positions,uploaded) VALUES('%s',%"PRIu64",'%s','false')", hash, data_size, json_object_to_json_string(store_positions_obj));
+    sprintf(set, "(hash,size,positions,uploaded) VALUES('%s',%"PRIu64",'%s','false')", hash, data_size, json_object_to_json_string(all_data_locations));
     char *table = "data_locations";
     if((status = insert_to(db, table, set)) != 0) {
         status = 1;
