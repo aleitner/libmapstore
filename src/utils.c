@@ -295,7 +295,7 @@ uint64_t sector_min(uint64_t data_size) {
     return 0;
 }
 
-uint64_t prepare_store_positions(uint64_t store_id, json_object *free_locations_arr, uint64_t data_size, json_object *map_coordinates) {
+uint64_t prepare_store_positions(uint64_t store_id, json_object *free_locations_arr, uint64_t data_size, json_object *map_plan) {
     uint64_t sector_size = 0;            //
     uint64_t space_to_use = 0;           //
     json_object *location_array = NULL;  // json object containing free location array
@@ -307,28 +307,15 @@ uint64_t prepare_store_positions(uint64_t store_id, json_object *free_locations_
     asprintf(&store_id_str, "%"PRIu64, store_id);
 
     // Get previously added store_positions
-    json_object *store_positions = NULL;
-    json_object *store_pos_object = json_object_new_object();
-    json_bool has_store_pos = json_object_object_get_ex(map_coordinates, "store_positions", &store_positions);
-    if (!has_store_pos) {
-        store_positions = json_object_new_array();
-    }
+    json_object *store_positions = json_object_new_array();
 
     // Get list of updated freespaces
-    json_object *updated_free_positions = NULL;
-    json_object *store_free_object = json_object_new_object();
-    json_bool has_free_pos = json_object_object_get_ex(map_coordinates, "free_positions", &updated_free_positions);
-    if (!has_free_pos) {
-        updated_free_positions = json_object_new_array();
-    }
+    json_object *updated_free_positions = json_object_new_array();
 
     // Get previously added store_positions
-    json_object *used_space = NULL;
-    json_object *used_space_obj = json_object_new_object();
-    json_bool has_used_space = json_object_object_get_ex(map_coordinates, "used_space", &used_space);
-    if (!has_used_space) {
-        used_space = json_object_new_array();
-    }
+    json_object *used_space = json_object_new_array();
+
+    json_object *map_store_obj = json_object_new_object();
 
     for (uint64_t arr_i = 0; arr_i < json_object_array_length(free_locations_arr); arr_i++) {
 
@@ -360,12 +347,12 @@ uint64_t prepare_store_positions(uint64_t store_id, json_object *free_locations_
 
     // Only add to store positions if we actually have positions
     if (space_to_use > 0) {
-        json_object_object_add(store_pos_object, store_id_str, store_positions);
-        json_object_object_add(map_coordinates, "store_positions", store_pos_object);
-        json_object_object_add(store_free_object, store_id_str, updated_free_positions);
-        json_object_object_add(map_coordinates, "free_positions", store_free_object);
-        json_object_object_add(used_space_obj, store_id_str, json_object_new_int64(total_used));
-        json_object_object_add(map_coordinates, "used_space", used_space_obj);
+        json_object_object_add(map_store_obj, "store_positions", store_positions);
+        json_object_object_add(map_store_obj, "free_positions", updated_free_positions);
+        json_object_object_add(map_store_obj, "used_space", json_object_new_int64(total_used));
+
+        json_object_object_add(map_plan, store_id_str, map_store_obj);
+
     }
 
     free(store_id_str);

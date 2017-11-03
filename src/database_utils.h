@@ -50,5 +50,6 @@ int prepare_tables(char *database_path);
 int get_latest_layout_row(sqlite3 *db, mapstore_layout_row *row);
 int get_store_rows(sqlite3 *db, char *where, mapstore_row *row);
 int sum_column_for_table(sqlite3 *db, char *column, char *table, uint64_t *sum);
+int update_map_store(sqlite3 *db, char *where, char *set);
 
 #endif /* MAPSTORE_DATABASE_UTILS_H */

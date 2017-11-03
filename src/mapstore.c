@@ -87,6 +87,12 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash) {
     int status = 0;
     json_object *map_plan = json_object_new_object();
     sqlite3 *db = NULL;
+    char where[BUFSIZ];
+    char set[BUFSIZ];
+    json_object *free_pos_obj = NULL;
+    json_object *store_positions_obj = NULL;
+    json_object *used_space_obj = NULL;
+    json_object *store_obj = NULL;
 
     if (sqlite3_open(ctx->database_path, &db) != SQLITE_OK) {
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
@@ -108,13 +114,28 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash) {
 
     printf("map_coordinates: %s\n", json_object_to_json_string(map_plan));
 
-    // if((status = update_store_with_plan(db, map_plan)) != 0) {
-    //     status = 1;
-    //     goto end_store_data;
-    // }
+    json_object_object_foreach(map_plan, key, val) {
+        json_object_object_get_ex(map_plan, key, &store_obj);
+        json_object_object_get_ex(store_obj, "free_positions", &free_pos_obj);
+        json_object_object_get_ex(store_obj, "store_positions", &store_positions_obj);
+        json_object_object_get_ex(store_obj, "used_space", &used_space_obj);
+        memset(where, '\0', BUFSIZ);
+        memset(set, '\0', BUFSIZ);
+        sprintf(where, "WHERE Id=%s", key);
+        sprintf(set, "SET free_space = free_space - %"PRIu64", free_locations = '%s'", json_object_get_int64(used_space_obj), json_object_to_json_string(free_pos_obj));
+        printf("Where: %s\n", where);
+        printf("set: %s\n", set);
+
+        if((status = update_map_store(db, where, set)) != 0) {
+            status = 1;
+            goto end_store_data;
+        }
+    }
 
     // Update map_stores free_locations and free_space
     // Add file to data_locations
+    // INSERT INTO `data_locations` (hash,size,positions,uploaded) VALUES(%s,%"PRIu64",%s,false);"
+
     // Store data in mmap files
 
     printf("Data size: %"PRIu64"\n", data_size);

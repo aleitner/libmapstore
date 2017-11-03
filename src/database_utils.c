@@ -16,7 +16,7 @@ int prepare_tables(char *database_path) {
         "`hash` TEXT NOT NULL UNIQUE, "
         "`size` INTEGER NOT NULL, "
         "`positions` TEXT NOT NULL, "
-        "`date` NUMERIC NOT NULL )";
+        "`uploaded` BOOLEAN NOT NULL )";
 
     if(sqlite3_exec(db, data_locations_table, 0, 0, &err_msg) != SQLITE_OK) {
         fprintf(stderr, "Failed to create table\n");
@@ -208,5 +208,24 @@ int sum_column_for_table(sqlite3 *db, char *column, char *table, uint64_t *sum) 
     sqlite3_finalize(stmt);
 
 end_mapstore_row:
+    return status;
+}
+
+int update_map_store(sqlite3 *db, char *where, char *set) {
+    int status = 0;
+    char *err_msg = NULL;
+
+    char *query = NULL;
+    asprintf(&query, "UPDATE `map_stores` %s %s LIMIT 1", set, where);
+
+    if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
+        fprintf(stderr, "Failed to create mapstore_layout\n");
+        fprintf(stderr, "SQL error: %s\n", err_msg);
+        sqlite3_free(err_msg);
+        status = 1;
+    }
+
+    free(query);
+
     return status;
 }

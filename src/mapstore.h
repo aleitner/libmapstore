@@ -52,7 +52,7 @@ typedef struct  {
 
 typedef struct  {
   uint8_t *hash;
-  char *data_locations_array;
+  uint64_t size;
 } data_info;
 
 typedef struct  {
