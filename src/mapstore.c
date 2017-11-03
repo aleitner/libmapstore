@@ -93,6 +93,7 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash) {
     json_object *store_positions_obj = NULL;
     json_object *used_space_obj = NULL;
     json_object *store_obj = NULL;
+    json_object *all_data_locations = json_object_new_object();
 
     if (sqlite3_open(ctx->database_path, &db) != SQLITE_OK) {
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
@@ -112,8 +113,15 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash) {
         goto end_store_data;
     }
 
+    if((status = hash_exists_in_mapstore(db, hash)) != 0) {
+        printf("Hash already exists in mapstore\n");
+        status = 1;
+        goto end_store_data;
+    }
+
     printf("map_coordinates: %s\n", json_object_to_json_string(map_plan));
 
+    // Update map_stores free_locations and free_space
     json_object_object_foreach(map_plan, key, val) {
         json_object_object_get_ex(map_plan, key, &store_obj);
         json_object_object_get_ex(store_obj, "free_positions", &free_pos_obj);
@@ -123,20 +131,25 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash) {
         memset(set, '\0', BUFSIZ);
         sprintf(where, "WHERE Id=%s", key);
         sprintf(set, "SET free_space = free_space - %"PRIu64", free_locations = '%s'", json_object_get_int64(used_space_obj), json_object_to_json_string(free_pos_obj));
-        printf("Where: %s\n", where);
-        printf("set: %s\n", set);
 
         if((status = update_map_store(db, where, set)) != 0) {
             status = 1;
             goto end_store_data;
         }
+
+        json_object_object_add(all_data_locations, key, store_positions_obj);
     }
 
-    // Update map_stores free_locations and free_space
     // Add file to data_locations
-    // INSERT INTO `data_locations` (hash,size,positions,uploaded) VALUES(%s,%"PRIu64",%s,false);"
+    memset(set, '\0', BUFSIZ);
+    sprintf(set, "(hash,size,positions,uploaded) VALUES('%s',%"PRIu64",'%s','false')", hash, data_size, json_object_to_json_string(store_positions_obj));
+    char *table = "data_locations";
+    if((status = insert_to(db, table, set)) != 0) {
+        status = 1;
+        goto end_store_data;
+    }
 
-    // Store data in mmap files
+    // TODO: Store data in mmap files
 
     printf("Data size: %"PRIu64"\n", data_size);
 
@@ -202,6 +215,11 @@ static int get_map_plan(sqlite3 *db, uint64_t total_stores, uint64_t data_size, 
         // If row doesn't have enough free space don't use it.
         if (remaining <= 0) {
             break;
+        }
+
+        // If row is empty
+        if (row.free_space <= 0) {
+            continue;
         }
 
         remaining -= prepare_store_positions(f, row.free_locations, remaining, map_coordinates);

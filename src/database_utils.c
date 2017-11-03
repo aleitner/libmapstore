@@ -219,7 +219,7 @@ int update_map_store(sqlite3 *db, char *where, char *set) {
     asprintf(&query, "UPDATE `map_stores` %s %s LIMIT 1", set, where);
 
     if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
-        fprintf(stderr, "Failed to create mapstore_layout\n");
+        fprintf(stderr, "Failed to update map_stores\n");
         fprintf(stderr, "SQL error: %s\n", err_msg);
         sqlite3_free(err_msg);
         status = 1;
@@ -227,5 +227,71 @@ int update_map_store(sqlite3 *db, char *where, char *set) {
 
     free(query);
 
+    return status;
+}
+
+int insert_to(sqlite3 *db, char *table, char *set) {
+    int status = 0;
+    char *err_msg = NULL;
+
+    char *query = NULL;
+    asprintf(&query, "INSERT INTO `%s` %s", table, set);
+
+    if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
+        fprintf(stderr, "Failed to insert into %s\n", table);
+        fprintf(stderr, "SQL error: %s\n", err_msg);
+        sqlite3_free(err_msg);
+        status = 1;
+    }
+
+    free(query);
+
+    return status;
+}
+
+int hash_exists_in_mapstore(sqlite3 *db, char *hash) {
+    int status = 0;
+    int rc;
+    char query[BUFSIZ];
+    char column_name[BUFSIZ];
+    sqlite3_stmt *stmt = NULL;
+
+    memset(query, '\0', BUFSIZ);
+    sprintf(query, "SELECT * FROM `data_locations` WHERE hash='%s' LIMIT 1", hash);
+    if ((rc = sqlite3_prepare_v2(db, query, BUFSIZ, &stmt, 0)) != SQLITE_OK) {
+        fprintf(stderr, "sql error: %s\n", sqlite3_errmsg(db));
+        status = 1;
+        goto end_mapstore_row;
+    } else while((rc = sqlite3_step(stmt)) != SQLITE_DONE) {
+        switch(rc) {
+            case SQLITE_BUSY:
+                fprintf(stderr, "Database is busy\n");
+                sleep(1);
+                break;
+            case SQLITE_ERROR:
+                fprintf(stderr, "step error: %s\n", sqlite3_errmsg(db));
+                status = 1;
+                goto end_mapstore_row;
+            case SQLITE_ROW:
+                {
+                    int n = sqlite3_column_count(stmt);
+                    int i;
+                    for (i = 0; i < n; i++) {
+                        memset(column_name, '\0', BUFSIZ);
+                        strcpy(column_name, sqlite3_column_name(stmt, i));
+
+                        if (strcmp(column_name, "hash") == 0) {
+                            if (strcmp((const char*)sqlite3_column_text(stmt, i), hash) == 0) {
+                                status = 1;
+                            };
+                        }
+                    }
+                }
+        }
+    }
+
+    sqlite3_finalize(stmt);
+
+end_mapstore_row:
     return status;
 }
