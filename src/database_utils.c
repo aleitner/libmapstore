@@ -295,3 +295,22 @@ int hash_exists_in_mapstore(sqlite3 *db, uint8_t *hash) {
 end_mapstore_row:
     return status;
 }
+
+int mark_as_uploaded(sqlite3 *db, uint8_t *hash) {
+    int status = 0;
+    char *err_msg = NULL;
+
+    char *query = NULL;
+    asprintf(&query, "UPDATE `data_locations` SET uploaded='true' WHERE hash='%s'", hash);
+
+    if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
+        fprintf(stderr, "Failed to update data_locations\n");
+        fprintf(stderr, "SQL error: %s\n", err_msg);
+        sqlite3_free(err_msg);
+        status = 1;
+    }
+
+    free(query);
+
+    return status;
+}

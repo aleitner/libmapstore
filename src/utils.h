@@ -45,6 +45,7 @@ int unmap_file(uint8_t *map, uint64_t filesize);
 int map_file(int fd, uint64_t filesize, uint8_t **map, bool read_only);
 int create_directory(char *path);
 int create_map_store(char *path, uint64_t size);
+int write_to_store(int data_fd, char *store_dir, json_object *data_locations);
 uint64_t get_file_size(int fd);
 uint64_t sector_min(uint64_t data_size);
 uint64_t prepare_store_positions(uint64_t store_id, json_object *free_locations_arr, uint64_t data_size, json_object *map_coordinates);

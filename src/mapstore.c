@@ -149,7 +149,17 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash) {
         goto end_store_data;
     }
 
-    // TODO: Store data in mmap files
+    // Store data in mmap files
+    if((status = write_to_store(fd, ctx->mapstore_path, all_data_locations)) != 0) {
+        status = 1;
+        goto end_store_data;
+    }
+
+    // Set uploaded to true in data_locations
+    if((status = mark_as_uploaded(db, hash)) != 0) {
+        status = 1;
+        goto end_store_data;
+    }
 
     printf("Data size: %"PRIu64"\n", data_size);
 
