@@ -51,11 +51,6 @@ typedef struct  {
 } mapstore_opts;
 
 typedef struct  {
-  uint8_t *hash;
-  uint64_t size;
-} data_info;
-
-typedef struct  {
   uint64_t free_space;
   uint64_t used_space;
   uint64_t allocation_size;
@@ -63,7 +58,7 @@ typedef struct  {
 } store_info;
 
 MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash);
-MAPSTORE_API int retrieve_data(mapstore_ctx *ctx, uint8_t *hash);
+MAPSTORE_API int retrieve_data(mapstore_ctx *ctx, int fd, uint8_t *hash);
 MAPSTORE_API int delete_data(mapstore_ctx *ctx, uint8_t *hash);
 MAPSTORE_API data_info *get_data_info(mapstore_ctx *ctx, uint8_t *hash);
 MAPSTORE_API store_info *get_store_info(mapstore_ctx *ctx);

@@ -178,7 +178,7 @@ end_store_data:
 /**
 * Retrieve data
 */
-MAPSTORE_API int retrieve_data(mapstore_ctx *ctx, uint8_t *hash) {
+MAPSTORE_API int retrieve_data(mapstore_ctx *ctx, int fd, uint8_t *hash) {
     fprintf(stdout, "I'm here!");
 
     return 0;

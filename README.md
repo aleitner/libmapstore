@@ -84,7 +84,7 @@ int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash);
 #### Retrieve Data
 
 ```C
-int retrieve_data(mapstore_ctx *ctx, uint8_t *hash);
+int retrieve_data(mapstore_ctx *ctx, int fd, uint8_t *hash);
 ```
 
 #### Delete Data
@@ -121,11 +121,6 @@ typedef struct  {
 } mapstore_opts;
 
 typedef struct  {
-  uint8_t *hash;
-  char *data_locations_array;
-} data_info;
-
-typedef struct  {
   uint64_t free_space;
   uint64_t used_space;
   uint64_t allocation_size;
@@ -150,9 +145,8 @@ TODO: Add graphical example of architecture
 ```
 
 `data_positions` example:
-
+`{ shard_piece_index: "file_table_id": [ [start_pos, end_pos], ... ] }`
 ```JSON
-{ shard_piece_index: [file_table_id, start_pos, end_pos], ... }
 { "1": [[10,51], [68, 96]] }
 ```
 
@@ -167,8 +161,7 @@ TODO: Add graphical example of architecture
 ```
 
 free_locations example:
-
+`[ [start_pos, end_pos], ... ]`
 ```JSON
-{ [ [start_pos, end_pos], ... ] }
-{ [ [0,9], [45,56], [51,51] ] }
+[ [0,9], [45,56], [51,51] ]
 ```
