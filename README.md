@@ -142,31 +142,28 @@ TODO: Add graphical example of architecture
 #### Data location table:
 
 ```
------------------------------------------------------------------
-| name | id  | data_hash | data_size | data_positions   | date  |
------------------------------------------------------------------
-| type | int | bytes(20) | int64     | Stringified JSON | int64 |
------------------------------------------------------------------
+--------------------------------------------------------------------
+| name | id  | data_hash | data_size | data_positions   | uploaded |
+--------------------------------------------------------------------
+| type | int | bytes(20) | int64     | Stringified JSON | boolean  |
+--------------------------------------------------------------------
 ```
 
 `data_positions` example:
 
 ```JSON
 { shard_piece_index: [file_table_id, start_pos, end_pos], ... }
-{ 0: [0,0,9], 1: [1,10,51] }
+{ "1": [[10,51], [68, 96]] }
 ```
-
-- 1st piece of shard is in file with id `0` from positions `0 to 9`
-- 2nd piece of shard is in file with id `1` from positions `10 to 51`
 
 #### File table:
 
 ```
-----------------------------------------------
-| name | id  | free_locations   | free_space |
-----------------------------------------------
-| type | int | Stringified JSON | int64      |
-----------------------------------------------
+------------------------------------------------------
+| name | id  | free_locations   | free_space | size  |
+------------------------------------------------------
+| type | int | Stringified JSON | int64      | int64 |
+------------------------------------------------------
 ```
 
 free_locations example:
