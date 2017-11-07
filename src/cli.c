@@ -83,8 +83,8 @@ int main (int argc, char **argv)
     mapstore_ctx ctx;
     mapstore_opts opts;
 
-    opts.allocation_size = 10737418240; // 10GB
-    opts.map_size = 2147483648;         // 2GB
+    opts.allocation_size = 100; // 10GB
+    opts.map_size = 100;         // 2GB
     opts.path = (mapstore_path != NULL) ? strdup(mapstore_path) : NULL;
 
     if (initialize_mapstore(&ctx, opts) != 0) {
@@ -98,7 +98,7 @@ int main (int argc, char **argv)
     if (strcmp(command, "store") == 0) {
         printf("Storing data...\n\n");
         FILE *data_file = NULL;
-        uint8_t *data_hash = NULL;
+        char *data_hash = NULL;
         char *data_path = argv[command_index + 1];
 
         if (data_path) {
@@ -169,7 +169,7 @@ end_store:
             retrieval_file = stdout;
         }
 
-        if ((ret = retrieve_data(&ctx, fileno(retrieval_file), (uint8_t *)data_hash)) != 0) {
+        if ((ret = retrieve_data(&ctx, fileno(retrieval_file), data_hash)) != 0) {
             printf("Failed to retrieve data: %s\n", data_hash);
             status = 1;
             goto end_retrieve;

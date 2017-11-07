@@ -81,7 +81,7 @@ end_initalize:
 /**
 * Store data
 */
-MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash) {
+MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, char *hash) {
     int status = 0;
     json_object *map_plan = json_object_new_object();
     sqlite3 *db = NULL;
@@ -126,7 +126,10 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash) {
         memset(where, '\0', BUFSIZ);
         memset(set, '\0', BUFSIZ);
         sprintf(where, "WHERE Id=%s", key);
-        sprintf(set, "SET free_space = free_space - %"PRIu64", free_locations = '%s'", json_object_get_int64(used_space_obj), json_object_to_json_string(free_pos_obj));
+        sprintf(set,
+                "SET free_space = free_space - %"PRIu64", free_locations = '%s'",
+                json_object_get_int64(used_space_obj),
+                json_object_to_json_string(free_pos_obj));
 
         if((status = update_map_store(db, where, set)) != 0) {
             status = 1;
@@ -138,7 +141,12 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash) {
 
     // Add file to data_locations
     memset(set, '\0', BUFSIZ);
-    sprintf(set, "(hash,size,positions,uploaded) VALUES('%s',%"PRIu64",'%s','false')", hash, data_size, json_object_to_json_string(all_data_locations));
+    sprintf(set,
+            "(hash,size,positions,uploaded) VALUES('%s',%"PRIu64",'%s','false')",
+            hash,
+            data_size,
+            json_object_to_json_string(all_data_locations));
+
     char *table = "data_locations";
     if((status = insert_to(db, table, set)) != 0) {
         status = 1;
@@ -172,9 +180,10 @@ end_store_data:
 /**
 * Retrieve data
 */
-MAPSTORE_API int retrieve_data(mapstore_ctx *ctx, int fd, uint8_t *hash) {
+MAPSTORE_API int retrieve_data(mapstore_ctx *ctx, int fd, char *hash) {
     int status = 0;
     sqlite3 *db = NULL;                 // Database
+    json_object *positions = NULL;
 
     /* Open Database */
     if (sqlite3_open(ctx->database_path, &db) != SQLITE_OK) {
@@ -184,23 +193,37 @@ MAPSTORE_API int retrieve_data(mapstore_ctx *ctx, int fd, uint8_t *hash) {
     }
 
     // get data map
+    if ((status = get_pos_from_data_locations(db, hash, &positions)) != 0) {
+        fprintf(stderr, "Failed to get positions from data_locations table\n");
+        status = 1;
+        goto end_retrieve_data;
+    }
 
-    // read from files according to data map
+    // read from files according to data maps
+    if((status = read_from_store(fd, ctx->mapstore_path, positions)) != 0) {
+        fprintf(stderr, "Failed to get retreive data from store\n");
+        status = 1;
+        goto end_retrieve_data;
+    }
 
 end_retrieve_data:
     if (db) {
         sqlite3_close(db);
     }
+
+    if (positions) {
+        json_object_put(positions);
+    }
     return status;
 }
 
-MAPSTORE_API int delete_data(mapstore_ctx *ctx, uint8_t *hash) {
+MAPSTORE_API int delete_data(mapstore_ctx *ctx, char *hash) {
     fprintf(stdout, "I'm here!");
 
     return 0;
 }
 
-MAPSTORE_API data_info *get_data_info(mapstore_ctx *ctx, uint8_t *hash) {
+MAPSTORE_API data_info *get_data_info(mapstore_ctx *ctx, char *hash) {
     fprintf(stdout, "I'm here!");
 }
 
@@ -208,7 +231,10 @@ MAPSTORE_API store_info *get_store_info(mapstore_ctx *ctx) {
     fprintf(stdout, "I'm here!");;
 }
 
-static int get_map_plan(sqlite3 *db, uint64_t total_stores, uint64_t data_size, json_object *map_coordinates) {
+static int get_map_plan(sqlite3 *db,
+                        uint64_t total_stores,
+                        uint64_t data_size,
+                        json_object *map_coordinates) {
     int status = 0;
     char *where = NULL;
 
@@ -296,7 +322,11 @@ static int map_files(mapstore_ctx *ctx) {
 
     /* Insert table layout. We keep track of the change over time so no need to delete old rows */
     memset(query, '\0', BUFSIZ);
-    sprintf(query, "INSERT INTO `mapstore_layout` (map_size,allocation_size) VALUES(%"PRIu64",%"PRIu64");", ctx->map_size, ctx->allocation_size);
+    sprintf(query,
+            "INSERT INTO `mapstore_layout` (map_size,allocation_size) VALUES(%"PRIu64",%"PRIu64");",
+            ctx->map_size,
+            ctx->allocation_size);
+
     if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
         fprintf(stderr, "Failed to create mapstore_layout\n");
         fprintf(stderr, "SQL error: %s\n", err_msg);
@@ -350,7 +380,12 @@ static int map_files(mapstore_ctx *ctx) {
         /* Insert new data */
         memset(query, '\0', BUFSIZ);
         json_positions = expand_free_space_list(row.free_locations, row.size, map_size);
-        sprintf(query, "INSERT INTO `map_stores` VALUES(%"PRIu64", '%s', %"PRIu64", %"PRIu64");", f, json_object_to_json_string(json_positions), free_space, map_size);
+        sprintf(query,
+                "INSERT INTO `map_stores` VALUES(%"PRIu64", '%s', %"PRIu64", %"PRIu64");",
+                f,
+                json_object_to_json_string(json_positions),
+                free_space,
+                map_size);
 
         if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
             fprintf(stderr, "Failed to insert to table map_stores\n");
@@ -368,7 +403,11 @@ static int map_files(mapstore_ctx *ctx) {
             memset(mapstore_path, '\0', BUFSIZ);
             sprintf(mapstore_path, "%s%"PRIu64".map", ctx->mapstore_path, f);
             if (create_map_store(mapstore_path, map_size) != 0) {
-                fprintf(stderr, "Failed to create mapped file: %s of size %"PRIu64"", ctx->mapstore_path, map_size);
+                fprintf(stderr,
+                    "Failed to create mapped file: %s of size %"PRIu64,
+                    ctx->mapstore_path,
+                    map_size);
+
                 status = 1;
                 goto end_map_files;
             };

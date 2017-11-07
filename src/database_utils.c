@@ -249,7 +249,7 @@ int insert_to(sqlite3 *db, char *table, char *set) {
     return status;
 }
 
-int hash_exists_in_mapstore(sqlite3 *db, uint8_t *hash) {
+int hash_exists_in_mapstore(sqlite3 *db, char *hash) {
     int status = 0;
     int rc;
     char query[BUFSIZ];
@@ -296,7 +296,7 @@ end_mapstore_row:
     return status;
 }
 
-int mark_as_uploaded(sqlite3 *db, uint8_t *hash) {
+int mark_as_uploaded(sqlite3 *db, char *hash) {
     int status = 0;
     char *err_msg = NULL;
 
@@ -312,5 +312,50 @@ int mark_as_uploaded(sqlite3 *db, uint8_t *hash) {
 
     free(query);
 
+    return status;
+}
+
+int get_pos_from_data_locations(sqlite3 *db, char *hash, json_object **positions) {
+    int status = 0;
+    int rc;
+    char query[BUFSIZ];
+    char column_name[BUFSIZ];
+    sqlite3_stmt *stmt = NULL;
+
+    memset(query, '\0', BUFSIZ);
+    sprintf(query, "SELECT * FROM `data_locations` WHERE hash='%s' LIMIT 1", hash);
+    if ((rc = sqlite3_prepare_v2(db, query, BUFSIZ, &stmt, 0)) != SQLITE_OK) {
+        fprintf(stderr, "sql error: %s\n", sqlite3_errmsg(db));
+        status = 1;
+        goto end_mapstore_row;
+    } else while((rc = sqlite3_step(stmt)) != SQLITE_DONE) {
+        switch(rc) {
+            case SQLITE_BUSY:
+                fprintf(stderr, "Database is busy\n");
+                sleep(1);
+                break;
+            case SQLITE_ERROR:
+                fprintf(stderr, "step error: %s\n", sqlite3_errmsg(db));
+                status = 1;
+                goto end_mapstore_row;
+            case SQLITE_ROW:
+                {
+                    int n = sqlite3_column_count(stmt);
+                    int i;
+                    for (i = 0; i < n; i++) {
+                        memset(column_name, '\0', BUFSIZ);
+                        strcpy(column_name, sqlite3_column_name(stmt, i));
+
+                        if (strcmp(column_name, "positions") == 0) {
+                            *positions = json_tokener_parse((const char *)sqlite3_column_text(stmt, i));
+                        }
+                    }
+                }
+        }
+    }
+
+    sqlite3_finalize(stmt);
+
+end_mapstore_row:
     return status;
 }

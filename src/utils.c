@@ -253,7 +253,7 @@ json_object *expand_free_space_list(json_object *old_free_space, uint64_t old_si
 int create_map_store(char *path, uint64_t size) {
     int status = 0;
     uint8_t *mmap_store = NULL;         // Memory Mapped map_store
-    FILE *fmap_store = fopen(path, "w+");
+    FILE *fmap_store = fopen(path, "wb");
 
     printf("Path: %s, size: %"PRIu64"\n", path, size);
 
@@ -265,9 +265,6 @@ int create_map_store(char *path, uint64_t size) {
                          "shard file: %i", falloc_status);
         goto create_map_store;
     }
-
-    map_file(fileno(fmap_store), size, &mmap_store, false);
-    unmap_file(mmap_store, size);
 
 create_map_store:
     if (fmap_store) {
@@ -380,7 +377,7 @@ int write_to_store(int data_fd, char *store_dir, json_object *data_locations) {
     json_object_object_foreach(data_locations, file, arr) {
         memset(mapstore_path, '\0', BUFSIZ);
         sprintf(mapstore_path, "%s%s.map", store_dir, file);
-        mapstore = fopen(mapstore_path, "w");
+        mapstore = fopen(mapstore_path, "a");
 
         for (arr_i = 0; arr_i < json_object_array_length(arr); arr_i++) {
             location_array = json_object_array_get_idx(arr, arr_i);
@@ -396,13 +393,73 @@ int write_to_store(int data_fd, char *store_dir, json_object *data_locations) {
                 bytes_read = pread(data_fd, buf, bytes_to_read, total_stored);
 
                 bytes_written = pwrite(fileno(mapstore), buf, bytes_read, bytes_read + first);
+                printf("Wrote buffer: %s\n", buf);
 
                 total_stored += bytes_written;
             } while (total_stored < sector_size || bytes_read == 0);
 
-            if (mapstore) {
-                fclose(mapstore);
-            }
+        }
+
+        if (mapstore) {
+            fclose(mapstore);
+        }
+    }
+
+    return status;
+}
+
+int read_from_store(int output_fd, char *store_dir, json_object *data_locations) {
+    int status = 0;
+    char mapstore_path[BUFSIZ];
+    FILE *mapstore = NULL;
+    uint64_t arr_i = 0;
+    json_object *location_array = NULL;
+    uint64_t first;
+    uint64_t final;
+    uint64_t position;
+    uint64_t sector_size = 0;
+    uint64_t bytes_read = 0;
+    char buf[BUFSIZ];
+    uint64_t total_written = 0;
+    uint64_t bytes_written = 0;
+    uint64_t bytes_to_read = 0;
+    json_object_object_foreach(data_locations, mapstore_id, coordinates) {
+        printf("Store: %s\n", mapstore_id);
+        memset(mapstore_path, '\0', BUFSIZ);
+        sprintf(mapstore_path, "%s%s.map", store_dir, mapstore_id);
+        mapstore = fopen(mapstore_path, "r");
+
+        for (arr_i = 0; arr_i < json_object_array_length(coordinates); arr_i++) {
+            location_array = json_object_array_get_idx(coordinates, arr_i);
+            position = json_object_get_int64(json_object_array_get_idx(location_array, 0));
+            first = json_object_get_int64(json_object_array_get_idx(location_array, 1));
+            final = json_object_get_int64(json_object_array_get_idx(location_array, 2));
+            sector_size = final - first + 1;
+
+            bytes_read = 0;
+            bytes_written = 0;
+
+            printf("First: %llu, Final: %llu, Position: %llu\n", first, final, position);
+            do {
+                memset(buf, '\0', BUFSIZ);
+                bytes_to_read = ((sector_size - bytes_written) > BUFSIZ) ? BUFSIZ : sector_size - bytes_written;
+
+                printf("Reading %llu bytes at position %llu\n", bytes_to_read, first+total_written);
+                errno = 0;
+                bytes_read = pread(fileno(mapstore), buf, bytes_to_read, first + total_written);
+                printf("Error: %d\n", errno);
+                printf("buf: %s\n", buf);
+                printf("bytes_read: %llu\n", bytes_read);
+
+                bytes_written = pwrite(output_fd, buf, bytes_read, position + total_written);
+
+                total_written += bytes_written;
+            } while (total_written < sector_size || bytes_read == 0);
+
+        }
+
+        if (mapstore) {
+            fclose(mapstore);
         }
     }
 
