@@ -1,6 +1,6 @@
 #include "cli_helper.h"
 
-int get_file_hash(int fd, uint8_t **hash) {
+int get_file_hash(int fd, char **hash) {
     ssize_t read_len = 0;
     uint8_t read_data[BUFSIZ];
     uint8_t prehash_sha256[SHA256_DIGEST_SIZE];

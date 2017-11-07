@@ -78,19 +78,19 @@ Example:
 #### Store Data
 
 ```C
-int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash);
+int store_data(mapstore_ctx *ctx, int fd, char *hash);
 ```
 
 #### Retrieve Data
 
 ```C
-int retrieve_data(mapstore_ctx *ctx, int fd, uint8_t *hash);
+int retrieve_data(mapstore_ctx *ctx, int fd, char *hash);
 ```
 
 #### Delete Data
 
 ```C
-int delete_data(mapstore_ctx *ctx, uint8_t *hash);
+int delete_data(mapstore_ctx *ctx, char *hash);
 ```
 
 #### Get Map Store Metadata
@@ -101,7 +101,7 @@ store_info *get_store_info(mapstore_ctx *ctx);
 
 #### Get Stored Data's Metadata
 ```C
-data_info *get_data_info(mapstore_ctx *ctx, uint8_t *hash);
+data_info *get_data_info(mapstore_ctx *ctx, char *hash);
 ```
 
 ### STRUCTS

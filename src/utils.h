@@ -46,6 +46,7 @@ int map_file(int fd, uint64_t filesize, uint8_t **map, bool read_only);
 int create_directory(char *path);
 int create_map_store(char *path, uint64_t size);
 int write_to_store(int data_fd, char *store_dir, json_object *data_locations);
+int read_from_store(int output_fd, char *store_dir, json_object *data_locations);
 uint64_t get_file_size(int fd);
 uint64_t sector_min(uint64_t data_size);
 uint64_t prepare_store_positions(uint64_t store_id,
@@ -53,7 +54,7 @@ uint64_t prepare_store_positions(uint64_t store_id,
                                  uint64_t data_position,
                                  uint64_t data_size,
                                  json_object *map_plan);
-                                 
+
 /* Json Functions */
 json_object *json_free_space_array(uint64_t start, uint64_t end);
 json_object *json_data_positions_array(uint64_t file_pos, uint64_t start, uint64_t end);
