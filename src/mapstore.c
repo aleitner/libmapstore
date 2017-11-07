@@ -4,7 +4,6 @@
 * Initialize everything
 */
 MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts) {
-    fprintf(stdout, "Initializing mapstore context\n");
     int status = 0;
 
     /* Initialized path variables */
@@ -83,7 +82,6 @@ end_initalize:
 * Store data
 */
 MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash) {
-    fprintf(stdout, "Begin Store Data\n");
     int status = 0;
     json_object *map_plan = json_object_new_object();
     sqlite3 *db = NULL;
@@ -101,6 +99,12 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash) {
         goto end_store_data;
     }
 
+    if((status = hash_exists_in_mapstore(db, hash)) != 0) {
+        fprintf(stderr, "Hash already exists in mapstore\n");
+        status = 1;
+        goto end_store_data;
+    }
+
     uint64_t data_size = get_file_size(fd);
     if (data_size <= 0) {
         status = 1;
@@ -112,14 +116,6 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash) {
         status = 1;
         goto end_store_data;
     }
-
-    if((status = hash_exists_in_mapstore(db, hash)) != 0) {
-        printf("Hash already exists in mapstore\n");
-        status = 1;
-        goto end_store_data;
-    }
-
-    printf("map_coordinates: %s\n", json_object_to_json_string(map_plan));
 
     // Update map_stores free_locations and free_space
     json_object_object_foreach(map_plan, key, val) {
@@ -161,8 +157,6 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint8_t *hash) {
         goto end_store_data;
     }
 
-    printf("Data size: %"PRIu64"\n", data_size);
-
 end_store_data:
     if (map_plan) {
         json_object_put(map_plan);
@@ -179,9 +173,25 @@ end_store_data:
 * Retrieve data
 */
 MAPSTORE_API int retrieve_data(mapstore_ctx *ctx, int fd, uint8_t *hash) {
-    fprintf(stdout, "I'm here!");
+    int status = 0;
+    sqlite3 *db = NULL;                 // Database
 
-    return 0;
+    /* Open Database */
+    if (sqlite3_open(ctx->database_path, &db) != SQLITE_OK) {
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        status = 1;
+        goto end_retrieve_data;
+    }
+
+    // get data map
+
+    // read from files according to data map
+
+end_retrieve_data:
+    if (db) {
+        sqlite3_close(db);
+    }
+    return status;
 }
 
 MAPSTORE_API int delete_data(mapstore_ctx *ctx, uint8_t *hash) {
@@ -232,11 +242,15 @@ static int get_map_plan(sqlite3 *db, uint64_t total_stores, uint64_t data_size, 
             continue;
         }
 
-        remaining -= prepare_store_positions(f, row.free_locations, remaining, map_coordinates);
+        remaining -= prepare_store_positions(f,
+                                             row.free_locations,
+                                             data_size - remaining,
+                                             remaining,
+                                             map_coordinates);
     }
 
     if (remaining > 0 ) {
-        printf("Not free enough space in mapstore\n");
+        fprintf(stderr, "Not free enough space in mapstore\n");
         status = 1;
         goto end_map_plan;
     }
@@ -289,8 +303,6 @@ static int map_files(mapstore_ctx *ctx) {
         sqlite3_free(err_msg);
         goto end_map_files;
     }
-
-    fprintf(stdout, "%"PRIu64" files of size %"PRIu64"\n", dv, ctx->map_size);
 
     /* Update database to know metadata about each mmap file */
     mapstore_row row;       // Previous Mapstore information

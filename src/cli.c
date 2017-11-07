@@ -92,17 +92,13 @@ int main (int argc, char **argv)
         return 1;
     }
 
-    printf("ctx.allocation_size: %"PRIu64"\n", ctx.allocation_size);
-    printf("ctx.map_size: %"PRIu64"\n", ctx.map_size);
-    printf("ctx.mapstore_path: %s\n", ctx.mapstore_path);
-    printf("ctx.database_path: %s\n", ctx.database_path);
     /**
      * Store File
      */
     if (strcmp(command, "store") == 0) {
-        printf("Storing data\n\n");
+        printf("Storing data...\n\n");
         FILE *data_file = NULL;
-
+        uint8_t *data_hash = NULL;
         char *data_path = argv[command_index + 1];
 
         if (data_path) {
@@ -113,29 +109,28 @@ int main (int argc, char **argv)
 
         if (!data_file) {
             if (data_path) {
-                printf("Could not access data: %s\n", data_path);
+                printf("Failed to access data: %s\n", data_path);
             } else {
-                printf("Could not access data from stdout\n");
+                printf("Failed to access data from stdout\n");
             }
 
             status = 1;
             goto end_store;
         }
 
-        uint8_t *data_hash = NULL;
         if ((ret = get_file_hash(fileno(data_file), &data_hash)) != 0) {
-            printf("Could not get file hash\n");
+            printf("Failed to get data hash: %s\n", data_path);
             status = 1;
             goto end_store;
         }
 
-        printf("Data hash: %s\n", data_hash);
-
-        if ((ret = store_data(&ctx, fileno(data_file), data_hash))!= 0) {
-            printf("Could not store file\n");
+        if ((ret = store_data(&ctx, fileno(data_file), data_hash)) != 0) {
+            printf("Failed to store data: %s\n", data_hash);
             status = 1;
             goto end_store;
         }
+
+        printf("Successfully stored data: %s\n", data_hash);
 
         /* Clean up store command */
 end_store:
@@ -143,12 +138,51 @@ end_store:
             fclose(data_file);
         }
 
+        if (data_hash) {
+            free(data_hash);
+        }
+
         return status;
     }
 
     if (strcmp(command, "retrieve") == 0) {
         printf("Retrieving data\n\n");
-        return 0;
+        char *data_hash = argv[command_index + 1];
+        char *retrieval_path = argv[command_index + 2];
+        FILE *retrieval_file = NULL;
+
+        if (data_hash == NULL) {
+            printf("Missing data hash\n");
+            printf(HELP_TEXT);
+            status = 1;
+            goto end_retrieve;
+        }
+
+        if (retrieval_path) {
+            retrieval_file = fopen(retrieval_path, "wb");
+            if (!retrieval_file) {
+                printf("Invalid path: %s\n", retrieval_path);
+                status = 1;
+                goto end_retrieve;
+            }
+        } else {
+            retrieval_file = stdout;
+        }
+
+        if ((ret = retrieve_data(&ctx, fileno(retrieval_file), (uint8_t *)data_hash)) != 0) {
+            printf("Failed to retrieve data: %s\n", data_hash);
+            status = 1;
+            goto end_retrieve;
+        }
+
+        printf("Successfully retrieved data: %s\n", data_hash);
+
+end_retrieve:
+        if (retrieval_file) {
+            fclose(retrieval_file);
+        }
+
+        return status;
     }
 
     if (strcmp(command, "delete") == 0) {

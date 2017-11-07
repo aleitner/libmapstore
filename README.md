@@ -145,9 +145,9 @@ TODO: Add graphical example of architecture
 ```
 
 `data_positions` example:
-`{ shard_piece_index: "file_table_id": [ [start_pos, end_pos], ... ] }`
+`{ shard_piece_index: "file_table_id": [ [file_pos, start_pos, end_pos], ... ] }`
 ```JSON
-{ "1": [[10,51], [68, 96]] }
+{ "1": [[0, 10,51], [42, 68, 96]] }
 ```
 
 #### File table:

@@ -51,6 +51,11 @@ typedef struct  {
 } mapstore_opts;
 
 typedef struct  {
+  uint8_t *hash;
+  uint64_t size;
+} data_info;
+
+typedef struct  {
   uint64_t free_space;
   uint64_t used_space;
   uint64_t allocation_size;

@@ -192,9 +192,9 @@ json_object *json_free_space_array(uint64_t start, uint64_t end) {
     return jarray;
 }
 
-json_object *json_data_positions_array(uint64_t file_id, uint64_t start, uint64_t end) {
+json_object *json_data_positions_array(uint64_t file_pos, uint64_t start, uint64_t end) {
     json_object *jarray = json_object_new_array();
-    json_object_array_add(jarray, json_object_new_int64(file_id));
+    json_object_array_add(jarray, json_object_new_int64(file_pos));
     json_object_array_add(jarray, json_object_new_int64(start));
     json_object_array_add(jarray, json_object_new_int64(end));
     return jarray;
@@ -211,8 +211,8 @@ json_object *expand_free_space_list(json_object *old_free_space, uint64_t old_si
     bool needs_new_coordinates = true; // true if we need to add new coordinates. false if we modify old coordinates
     int i = 0;
 
-    printf("Old Size: %"PRIu64", New Size: %"PRIu64"\n", old_size, new_size);
-    printf("Old_space: %s\n",json_object_to_json_string(old_free_space));
+    // fprintf(stderr, "Old Size: %"PRIu64", New Size: %"PRIu64"\n", old_size, new_size);
+    // fprintf(stderr, "Old_space: %s\n",json_object_to_json_string(old_free_space));
 
     if (old_free_space == NULL) {
         new_jarray = json_free_space_array(0, new_size - 1);
@@ -245,7 +245,7 @@ json_object *expand_free_space_list(json_object *old_free_space, uint64_t old_si
         return old_free_space;
     }
 
-    printf("new_space: %s\n",json_object_to_json_string(new_free_space));
+    // fprintf(stderr, "new_space: %s\n",json_object_to_json_string(new_free_space));
 
     return new_free_space;
 }
@@ -295,7 +295,7 @@ uint64_t sector_min(uint64_t data_size) {
     return 0;
 }
 
-uint64_t prepare_store_positions(uint64_t store_id, json_object *free_locations_arr, uint64_t data_size, json_object *map_plan) {
+uint64_t prepare_store_positions(uint64_t store_id, json_object *free_locations_arr, uint64_t data_position, uint64_t data_size, json_object *map_plan) {
     uint64_t sector_size = 0;            //
     uint64_t space_to_use = 0;           //
     json_object *location_array = NULL;  // json object containing free location array
@@ -333,16 +333,18 @@ uint64_t prepare_store_positions(uint64_t store_id, json_object *free_locations_
         // Calculate the amount of space to be stored
         space_to_use = (sector_size > remaining) ? remaining : sector_size;
         new_final = (sector_size > remaining) ? first + space_to_use - 1 : old_final;
-        total_used += space_to_use;
-        remaining -= space_to_use;
 
         // Create coordinates for data piece to be stored and add to store_positions array
-        json_object_array_add(store_positions, json_free_space_array(first, new_final));
+        json_object_array_add(store_positions, json_data_positions_array(data_position + total_used, first, new_final));
+
 
         // If modifying the free space
         if (old_final != new_final) {
             json_object_array_add(updated_free_positions, json_free_space_array(new_final + 1, old_final));
         }
+
+        total_used += space_to_use;
+        remaining -= space_to_use;
     }
 
     // Only add to store positions if we actually have positions
@@ -382,8 +384,8 @@ int write_to_store(int data_fd, char *store_dir, json_object *data_locations) {
 
         for (arr_i = 0; arr_i < json_object_array_length(arr); arr_i++) {
             location_array = json_object_array_get_idx(arr, arr_i);
-            first = json_object_get_int64(json_object_array_get_idx(location_array, 0));
-            final = json_object_get_int64(json_object_array_get_idx(location_array, 1));
+            first = json_object_get_int64(json_object_array_get_idx(location_array, 1));
+            final = json_object_get_int64(json_object_array_get_idx(location_array, 2));
             sector_size = final - first + 1;
 
             bytes_read = 0;
@@ -396,7 +398,7 @@ int write_to_store(int data_fd, char *store_dir, json_object *data_locations) {
                 bytes_written = pwrite(fileno(mapstore), buf, bytes_read, bytes_read + first);
 
                 total_stored += bytes_written;
-            } while (total_stored < sector_size);
+            } while (total_stored < sector_size || bytes_read == 0);
 
             if (mapstore) {
                 fclose(mapstore);
