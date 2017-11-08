@@ -379,6 +379,12 @@ int write_to_store(int data_fd, char *store_dir, json_object *data_locations) {
         sprintf(mapstore_path, "%s%s.map", store_dir, file);
         mapstore = fopen(mapstore_path, "a");
 
+        if (!mapstore) {
+            fprintf(stderr, "Error opening mapstore for writing: %s\n", mapstore_path);
+            status = 1;
+            goto end_write;
+        }
+
         for (arr_i = 0; arr_i < json_object_array_length(arr); arr_i++) {
             location_array = json_object_array_get_idx(arr, arr_i);
             first = json_object_get_int64(json_object_array_get_idx(location_array, 1));
@@ -391,12 +397,11 @@ int write_to_store(int data_fd, char *store_dir, json_object *data_locations) {
                 memset(buf, '\0', BUFSIZ);
                 bytes_to_read = ((sector_size - bytes_written) > BUFSIZ) ? BUFSIZ : sector_size - bytes_written;
                 bytes_read = pread(data_fd, buf, bytes_to_read, total_stored);
-                printf("read data: %s\n", buf);
 
                 bytes_written = pwrite(fileno(mapstore), buf, bytes_read, bytes_read + first);
 
                 total_stored += bytes_written;
-            } while (total_stored < sector_size || bytes_read == 0);
+            } while (total_stored < sector_size && bytes_read > 0);
 
         }
 
@@ -405,6 +410,7 @@ int write_to_store(int data_fd, char *store_dir, json_object *data_locations) {
         }
     }
 
+end_write:
     return status;
 }
 
@@ -420,14 +426,20 @@ int read_from_store(int output_fd, char *store_dir, json_object *data_locations)
     uint64_t sector_size = 0;
     uint64_t bytes_read = 0;
     char buf[BUFSIZ];
-    uint64_t total_written = 0;
+    uint64_t total_written_to_file = 0;
     uint64_t bytes_written = 0;
     uint64_t bytes_to_read = 0;
+
     json_object_object_foreach(data_locations, mapstore_id, coordinates) {
-        printf("Store: %s\n", mapstore_id);
         memset(mapstore_path, '\0', BUFSIZ);
         sprintf(mapstore_path, "%s%s.map", store_dir, mapstore_id);
         mapstore = fopen(mapstore_path, "r");
+
+        if (!mapstore) {
+            fprintf(stderr, "Error opening mapstore for reading: %s\n", mapstore_path);
+            status = 1;
+            goto end_read;
+        }
 
         for (arr_i = 0; arr_i < json_object_array_length(coordinates); arr_i++) {
             location_array = json_object_array_get_idx(coordinates, arr_i);
@@ -438,22 +450,20 @@ int read_from_store(int output_fd, char *store_dir, json_object *data_locations)
 
             bytes_read = 0;
             bytes_written = 0;
+            total_written_to_file = 0;
 
-            printf("First: %llu, Final: %llu, Position: %llu\n", first, final, position);
             do {
                 memset(buf, '\0', BUFSIZ);
-                bytes_to_read = ((sector_size - bytes_written) > BUFSIZ) ? BUFSIZ : sector_size - bytes_written;
-
-                printf("Reading %llu bytes at position %llu\n", bytes_to_read, first+total_written);
-                errno = 0;
-                bytes_read = pread(fileno(mapstore), buf, bytes_to_read, first + total_written);
+                bytes_to_read = ((sector_size - total_written_to_file) > BUFSIZ) ? BUFSIZ : sector_size - total_written_to_file;
+                printf("Reading %llu bytes at position %llu from %s\n", bytes_to_read, first+total_written_to_file, mapstore_path);
+                bytes_read = pread(fileno(mapstore), buf, bytes_to_read, first + total_written_to_file);
                 printf("buf: %s\n", buf);
-                printf("bytes_read: %llu\n", bytes_read);
+                printf("bytes_read: %llu\n\n", bytes_read);
 
-                bytes_written = pwrite(output_fd, buf, bytes_read, position + total_written);
+                bytes_written = pwrite(output_fd, buf, bytes_read, position + total_written_to_file);
 
-                total_written += bytes_written;
-            } while (total_written < sector_size || bytes_read == 0);
+                total_written_to_file += bytes_written;
+            } while (total_written_to_file < sector_size && bytes_read > 0);
 
         }
 
@@ -462,5 +472,6 @@ int read_from_store(int output_fd, char *store_dir, json_object *data_locations)
         }
     }
 
+end_read:
     return status;
 }

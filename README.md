@@ -1,7 +1,7 @@
 libmapstore
 =============
 
-Store data in memory mapped files
+Store data in preallocated files
 
 ## Build
 

@@ -83,8 +83,8 @@ int main (int argc, char **argv)
     mapstore_ctx ctx;
     mapstore_opts opts;
 
-    opts.allocation_size = 100; // 10GB
-    opts.map_size = 100;         // 2GB
+    opts.allocation_size = BUFSIZ; // 10GB
+    opts.map_size = 16;         // 2GB
     opts.path = (mapstore_path != NULL) ? strdup(mapstore_path) : NULL;
 
     if (initialize_mapstore(&ctx, opts) != 0) {
@@ -159,7 +159,7 @@ end_store:
         }
 
         if (retrieval_path) {
-            retrieval_file = fopen(retrieval_path, "wb");
+            retrieval_file = fopen(retrieval_path, "w+");
             if (!retrieval_file) {
                 printf("Invalid path: %s\n", retrieval_path);
                 status = 1;
