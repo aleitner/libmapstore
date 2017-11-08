@@ -370,14 +370,15 @@ int write_to_store(int data_fd, char *store_dir, json_object *data_locations) {
     uint64_t sector_size = 0;
     uint64_t bytes_read = 0;
     char buf[BUFSIZ];
-    uint64_t total_stored = 0;
+    uint64_t total_written_to_file = 0;
+    uint64_t total_written_for_sector = 0;
     uint64_t bytes_written = 0;
     uint64_t bytes_to_read = 0;
 
     json_object_object_foreach(data_locations, file, arr) {
         memset(mapstore_path, '\0', BUFSIZ);
         sprintf(mapstore_path, "%s%s.map", store_dir, file);
-        mapstore = fopen(mapstore_path, "a");
+        mapstore = fopen(mapstore_path, "a+");
 
         if (!mapstore) {
             fprintf(stderr, "Error opening mapstore for writing: %s\n", mapstore_path);
@@ -393,15 +394,20 @@ int write_to_store(int data_fd, char *store_dir, json_object *data_locations) {
 
             bytes_read = 0;
             bytes_written = 0;
+            total_written_for_sector = 0;
+
             do {
                 memset(buf, '\0', BUFSIZ);
-                bytes_to_read = ((sector_size - bytes_written) > BUFSIZ) ? BUFSIZ : sector_size - bytes_written;
-                bytes_read = pread(data_fd, buf, bytes_to_read, total_stored);
+                bytes_to_read = ((sector_size - total_written_for_sector) > BUFSIZ) ? BUFSIZ : sector_size - total_written_for_sector;
+                bytes_read = pread(data_fd, buf, bytes_to_read, total_written_to_file);
 
-                bytes_written = pwrite(fileno(mapstore), buf, bytes_read, bytes_read + first);
+                printf("Read_data: %s\n", buf);
+                printf("Writing %llu bytes, to position %llu of %s\n\n", bytes_read, total_written_for_sector + first, mapstore_path);
+                bytes_written = pwrite(fileno(mapstore), buf, bytes_read, total_written_for_sector + first);
 
-                total_stored += bytes_written;
-            } while (total_stored < sector_size && bytes_read > 0);
+                total_written_to_file += bytes_written;
+                total_written_for_sector += bytes_written;
+            } while (total_written_for_sector < sector_size && bytes_read > 0);
 
         }
 
@@ -426,7 +432,7 @@ int read_from_store(int output_fd, char *store_dir, json_object *data_locations)
     uint64_t sector_size = 0;
     uint64_t bytes_read = 0;
     char buf[BUFSIZ];
-    uint64_t total_written_to_file = 0;
+    uint64_t total_written_for_sector = 0;
     uint64_t bytes_written = 0;
     uint64_t bytes_to_read = 0;
 
@@ -450,20 +456,20 @@ int read_from_store(int output_fd, char *store_dir, json_object *data_locations)
 
             bytes_read = 0;
             bytes_written = 0;
-            total_written_to_file = 0;
+            total_written_for_sector = 0;
 
             do {
                 memset(buf, '\0', BUFSIZ);
-                bytes_to_read = ((sector_size - total_written_to_file) > BUFSIZ) ? BUFSIZ : sector_size - total_written_to_file;
-                printf("Reading %llu bytes at position %llu from %s\n", bytes_to_read, first+total_written_to_file, mapstore_path);
-                bytes_read = pread(fileno(mapstore), buf, bytes_to_read, first + total_written_to_file);
+                bytes_to_read = ((sector_size - total_written_for_sector) > BUFSIZ) ? BUFSIZ : sector_size - total_written_for_sector;
+                printf("Reading %llu bytes at position %llu from %s\n", bytes_to_read, first+total_written_for_sector, mapstore_path);
+                bytes_read = pread(fileno(mapstore), buf, bytes_to_read, first + total_written_for_sector);
                 printf("buf: %s\n", buf);
                 printf("bytes_read: %llu\n\n", bytes_read);
 
-                bytes_written = pwrite(output_fd, buf, bytes_read, position + total_written_to_file);
+                bytes_written = pwrite(output_fd, buf, bytes_read, position + total_written_for_sector);
 
-                total_written_to_file += bytes_written;
-            } while (total_written_to_file < sector_size && bytes_read > 0);
+                total_written_for_sector += bytes_written;
+            } while (total_written_for_sector < sector_size && bytes_read > 0);
 
         }
 
