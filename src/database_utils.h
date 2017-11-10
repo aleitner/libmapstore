@@ -55,5 +55,6 @@ int insert_to(sqlite3 *db, char *table, char *set);
 int hash_exists_in_mapstore(sqlite3 *db, char *hash);
 int mark_as_uploaded(sqlite3 *db, char *hash);
 int get_pos_from_data_locations(sqlite3 *db, char *hash, json_object **positions);
+int delete_by_hash_from_data_locations(sqlite3 *db, char *hash);
 
 #endif /* MAPSTORE_DATABASE_UTILS_H */

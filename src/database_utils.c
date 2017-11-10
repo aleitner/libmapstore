@@ -316,7 +316,7 @@ int mark_as_uploaded(sqlite3 *db, char *hash) {
 }
 
 int get_pos_from_data_locations(sqlite3 *db, char *hash, json_object **positions) {
-    int status = 0;
+    int status = 1;
     int rc;
     char query[BUFSIZ];
     char column_name[BUFSIZ];
@@ -347,6 +347,7 @@ int get_pos_from_data_locations(sqlite3 *db, char *hash, json_object **positions
                         strcpy(column_name, sqlite3_column_name(stmt, i));
 
                         if (strcmp(column_name, "positions") == 0) {
+                            status = 0;
                             *positions = json_tokener_parse((const char *)sqlite3_column_text(stmt, i));
                         }
                     }
@@ -357,5 +358,24 @@ int get_pos_from_data_locations(sqlite3 *db, char *hash, json_object **positions
     sqlite3_finalize(stmt);
 
 end_mapstore_row:
+    return status;
+}
+
+int delete_by_hash_from_data_locations(sqlite3 *db, char *hash) {
+    int status = 0;
+    char *err_msg = NULL;
+
+    char *query = NULL;
+    asprintf(&query, "DELETE FROM `data_locations` WHERE hash='%s'", hash);
+
+    if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
+        fprintf(stderr, "Failed to delete hash from data_locations\n");
+        fprintf(stderr, "SQL error: %s\n", err_msg);
+        sqlite3_free(err_msg);
+        status = 1;
+    }
+
+    free(query);
+
     return status;
 }

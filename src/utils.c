@@ -401,8 +401,6 @@ int write_to_store(int data_fd, char *store_dir, json_object *data_locations) {
                 bytes_to_read = ((sector_size - total_written_for_sector) > BUFSIZ) ? BUFSIZ : sector_size - total_written_for_sector;
                 bytes_read = pread(data_fd, buf, bytes_to_read, total_written_to_file);
 
-                printf("Read_data: %s\n", buf);
-                printf("Writing %llu bytes, to position %llu of %s\n\n", bytes_read, total_written_for_sector + first, mapstore_path);
                 bytes_written = pwrite(fileno(mapstore), buf, bytes_read, total_written_for_sector + first);
 
                 total_written_to_file += bytes_written;
@@ -461,10 +459,7 @@ int read_from_store(int output_fd, char *store_dir, json_object *data_locations)
             do {
                 memset(buf, '\0', BUFSIZ);
                 bytes_to_read = ((sector_size - total_written_for_sector) > BUFSIZ) ? BUFSIZ : sector_size - total_written_for_sector;
-                printf("Reading %llu bytes at position %llu from %s\n", bytes_to_read, first+total_written_for_sector, mapstore_path);
                 bytes_read = pread(fileno(mapstore), buf, bytes_to_read, first + total_written_for_sector);
-                printf("buf: %s\n", buf);
-                printf("bytes_read: %llu\n\n", bytes_read);
 
                 bytes_written = pwrite(output_fd, buf, bytes_read, position + total_written_for_sector);
 
@@ -480,4 +475,69 @@ int read_from_store(int output_fd, char *store_dir, json_object *data_locations)
 
 end_read:
     return status;
+}
+
+json_object *combine_positions(json_object *locations, uint64_t *freespace) {
+    int free_locations_count;
+    json_object *location_array = NULL;
+    int arr_ix = 0;
+    int i = 0;
+    int ix = 0;
+    int arr_i = 0;
+    bool changed = false;
+    json_object *combined_pos = json_object_new_array();
+
+    uint64_t coordinate_count = 2 * json_object_array_length(locations);
+    uint64_t coords[coordinate_count];
+
+    // Convert json to integer array
+    for (arr_i = 0; arr_i < coordinate_count; arr_i += 2) {
+        location_array = json_object_array_get_idx(locations, arr_i/2);
+        coords[arr_i] = json_object_get_int64(json_object_array_get_idx(location_array, 0));
+        coords[arr_i + 1]  = json_object_get_int64(json_object_array_get_idx(location_array, 1));
+    }
+
+    while (i < coordinate_count) {
+        // Starts out as false.
+        // Set changed to true when we modify the current coordinates.
+        // When set to true we restart the comparison using the new coordinates.
+        changed = false;
+
+        for (ix = i+2; ix < coordinate_count; ix += 2) {
+            if (coords[i] == coords[ix + 1] + 1) {
+                coords[i] = coords[ix];
+
+                // Erase the coordinates combined and shift the last coordinates into their position
+                coords[ix] = coords[coordinate_count - 2];
+                coords[ix + 1] = coords[coordinate_count - 1];
+                coordinate_count -= 2;
+
+                // Initial coordinates changed so we need to compare them to everything
+                changed = true;
+                break;
+            } else if (coords[i + 1] == coords[ix] - 1) {
+                coords[i + 1] = coords[ix + 1];
+
+                // Erase the coordinates combined and shift the last coordinates into their position
+                coords[ix] = coords[coordinate_count - 2];
+                coords[ix + 1] = coords[coordinate_count - 1];
+                coordinate_count -= 2;
+
+                // Initial coordinates changed so we need to compare them to everything
+                changed = true;
+                break;
+            }
+
+        }
+
+        // Nothing changed so we can add the coordinates to the combined_pos json
+        // and start comparing the next set of coordinates
+        if (changed == false) {
+            json_object_array_add(combined_pos, json_free_space_array(coords[i], coords[i+1]));
+            (*freespace)+= coords[i+1] - coords[i] + 1;
+            i += 2;
+        }
+    }
+
+    return combined_pos;
 }

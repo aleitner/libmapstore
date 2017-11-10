@@ -83,8 +83,8 @@ int main (int argc, char **argv)
     mapstore_ctx ctx;
     mapstore_opts opts;
 
-    opts.allocation_size = 96; // 10GB
-    opts.map_size = 32;         // 2GB
+    opts.allocation_size = 10737418240; // 10GB
+    opts.map_size = 2147483648;         // 2GB
     opts.path = (mapstore_path != NULL) ? strdup(mapstore_path) : NULL;
 
     if (initialize_mapstore(&ctx, opts) != 0) {
@@ -186,8 +186,25 @@ end_retrieve:
     }
 
     if (strcmp(command, "delete") == 0) {
-        printf("Deleting data\n\n");
-        return 0;
+        char *data_hash = argv[command_index + 1];
+
+        if (data_hash == NULL) {
+            printf("Missing data hash\n");
+            printf(HELP_TEXT);
+            status = 1;
+            goto end_delete;
+        }
+
+        if ((ret = delete_data(&ctx, data_hash)) != 0) {
+            printf("Failed to delete data: %s\n", data_hash);
+            status = 1;
+            goto end_delete;
+        }
+
+        printf("Successfully deleted data: %s\n", data_hash);
+
+end_delete:
+        return status;
     }
 
     if (strcmp(command, "get-data-info") == 0) {

@@ -90,7 +90,6 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, char *hash) {
     json_object *free_pos_obj = NULL;
     json_object *store_positions_obj = NULL;
     json_object *used_space_obj = NULL;
-    json_object *store_obj = NULL;
     json_object *all_data_locations = json_object_new_object();
 
     if (sqlite3_open(ctx->database_path, &db) != SQLITE_OK) {
@@ -118,14 +117,13 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, char *hash) {
     }
 
     // Update map_stores free_locations and free_space
-    json_object_object_foreach(map_plan, key, val) {
-        json_object_object_get_ex(map_plan, key, &store_obj);
-        json_object_object_get_ex(store_obj, "free_positions", &free_pos_obj);
-        json_object_object_get_ex(store_obj, "store_positions", &store_positions_obj);
-        json_object_object_get_ex(store_obj, "used_space", &used_space_obj);
+    json_object_object_foreach(map_plan, store_id, store_meta) {
+        json_object_object_get_ex(store_meta, "free_positions", &free_pos_obj);
+        json_object_object_get_ex(store_meta, "store_positions", &store_positions_obj);
+        json_object_object_get_ex(store_meta, "used_space", &used_space_obj);
         memset(where, '\0', BUFSIZ);
         memset(set, '\0', BUFSIZ);
-        sprintf(where, "WHERE Id=%s", key);
+        sprintf(where, "WHERE Id=%s", store_id);
         sprintf(set,
                 "SET free_space = free_space - %"PRIu64", free_locations = '%s'",
                 json_object_get_int64(used_space_obj),
@@ -136,7 +134,7 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, char *hash) {
             goto end_store_data;
         }
 
-        json_object_object_add(all_data_locations, key, store_positions_obj);
+        json_object_object_add(all_data_locations, store_id, store_positions_obj);
     }
 
     // Add file to data_locations
@@ -217,10 +215,73 @@ end_retrieve_data:
     return status;
 }
 
+/**
+* Delete data
+*/
 MAPSTORE_API int delete_data(mapstore_ctx *ctx, char *hash) {
-    fprintf(stdout, "I'm here!");
+    int status = 0;
+    sqlite3 *db = NULL;                 // Database
+    json_object *positions = NULL;
+    json_object *updated_positions = NULL;
+    json_object *free_pos_obj = NULL;
+    json_object *free_space_obj = NULL;
+    char where[BUFSIZ];
+    char set[BUFSIZ];
 
-    return 0;
+    /* Open Database */
+    if (sqlite3_open(ctx->database_path, &db) != SQLITE_OK) {
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        status = 1;
+        goto end_delete_data;
+    }
+
+    // get data map
+    if ((status = get_pos_from_data_locations(db, hash, &positions)) != 0) {
+        fprintf(stderr, "Failed to get positions from data_locations table\n");
+        status = 1;
+        goto end_delete_data;
+    }
+
+    // add each location to map_stores table free_locations
+    if ((status = get_updated_free_locations(db, positions, &updated_positions)) != 0) {
+        status = 1;
+        goto end_delete_data;
+    };
+
+    // Update freespace for map_store with updated_positions
+    json_object_object_foreach(updated_positions, store_id, store_meta) {
+        json_object_object_get_ex(store_meta, "free_positions", &free_pos_obj);
+        json_object_object_get_ex(store_meta, "free_space", &free_space_obj);
+        memset(where, '\0', BUFSIZ);
+        memset(set, '\0', BUFSIZ);
+        sprintf(where, "WHERE Id=%s", store_id);
+        sprintf(set,
+                "SET free_space = %"PRIu64", free_locations = '%s'",
+                json_object_get_int64(free_space_obj),
+                json_object_to_json_string(free_pos_obj));
+
+        if((status = update_map_store(db, where, set)) != 0) {
+            status = 1;
+            goto end_delete_data;
+        }
+    }
+
+    // Delete data_locations row by hash
+    if((status = delete_by_hash_from_data_locations(db, hash)) != 0) {
+        status = 1;
+        goto end_delete_data;
+    }
+    // Empty mapstore positions
+
+end_delete_data:
+    if (db) {
+        sqlite3_close(db);
+    }
+
+    if (positions) {
+        json_object_put(positions);
+    }
+    return status;
 }
 
 MAPSTORE_API data_info *get_data_info(mapstore_ctx *ctx, char *hash) {
@@ -229,195 +290,4 @@ MAPSTORE_API data_info *get_data_info(mapstore_ctx *ctx, char *hash) {
 
 MAPSTORE_API store_info *get_store_info(mapstore_ctx *ctx) {
     fprintf(stdout, "I'm here!");;
-}
-
-static int get_map_plan(sqlite3 *db,
-                        uint64_t total_stores,
-                        uint64_t data_size,
-                        json_object *map_coordinates) {
-    int status = 0;
-    char *where = NULL;
-
-    // Determine space available 1:
-    uint64_t total_free_space = 0;
-    if ((status = sum_column_for_table(db, "free_space", "map_stores", &total_free_space)) != 0) {
-        goto end_map_plan;
-    }
-
-    mapstore_row row;
-    uint64_t remaining = data_size;
-    uint64_t min = 0;
-    // Get info for each map store
-
-    for (uint64_t f = 1; f < total_stores; f++) {
-        uint64_t min = (remaining > sector_min(data_size)) ? sector_min(data_size) : remaining;
-        asprintf(&where, "WHERE Id = %"PRIu64" AND free_space > %"PRIu64, f, min);
-
-        if (get_store_rows(db, where, &row) != 0) {
-            status = 1;
-            goto end_map_plan;
-        };
-
-        // If row doesn't have enough free space don't use it.
-        if (remaining <= 0) {
-            break;
-        }
-
-        // If row is empty
-        if (row.free_space <= 0) {
-            continue;
-        }
-
-        remaining -= prepare_store_positions(f,
-                                             row.free_locations,
-                                             data_size - remaining,
-                                             remaining,
-                                             map_coordinates);
-    }
-
-    if (remaining > 0 ) {
-        fprintf(stderr, "Not free enough space in mapstore\n");
-        status = 1;
-        goto end_map_plan;
-    }
-
-end_map_plan:
-    if (where) {
-        free(where);
-    }
-
-    return status;
-}
-
-static int map_files(mapstore_ctx *ctx) {
-    /** TODO: Separate database calls into separate database_utils
-    *         functions so we can test better and replace with
-    *         another database if sqlite doesn't work out
-    */
-
-    int status = 0;
-
-    uint64_t dv = ctx->allocation_size / ctx->map_size; // NUmber of files to be created except smaller tail file
-    uint64_t rm = ctx->allocation_size % ctx->map_size; // Size of smaller tail file
-    ctx->total_mapstores = (rm > 0) ? dv + 2 : dv + 1;   // If there is a remainder make sure we create a row an map for that smaller file
-
-    char mapstore_path[BUFSIZ];         // Path to map_store
-    char query[BUFSIZ];                 // SQL query
-    sqlite3 *db = NULL;                 // Database
-    char *err_msg = NULL;               // error from sqlite3_exec
-    json_object *json_positions = NULL; // Positions of free space
-
-    /* Open Database */
-    if (sqlite3_open(ctx->database_path, &db) != SQLITE_OK) {
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
-        status = 1;
-        goto end_map_files;
-    }
-
-    /* get previous layout for comparing size changes */
-    mapstore_layout_row previous_layout;
-    if (get_latest_layout_row(db, &previous_layout) != 0) {
-        goto end_map_files;
-    };
-
-    /* Insert table layout. We keep track of the change over time so no need to delete old rows */
-    memset(query, '\0', BUFSIZ);
-    sprintf(query,
-            "INSERT INTO `mapstore_layout` (map_size,allocation_size) VALUES(%"PRIu64",%"PRIu64");",
-            ctx->map_size,
-            ctx->allocation_size);
-
-    if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
-        fprintf(stderr, "Failed to create mapstore_layout\n");
-        fprintf(stderr, "SQL error: %s\n", err_msg);
-        sqlite3_free(err_msg);
-        goto end_map_files;
-    }
-
-    /* Update database to know metadata about each mmap file */
-    mapstore_row row;       // Previous Mapstore information
-    uint64_t map_size;      // Size of mapstore allocation
-    uint64_t free_space;    // Free space for mapstore
-    uint64_t id;            // Mapstore Id
-
-    for (uint64_t f = 1; f < ctx->total_mapstores; f++) {
-
-        /* Check if mapstore already exists */
-        char where[BUFSIZ];
-        memset(where, '\0', BUFSIZ);
-        sprintf(where, "WHERE Id = %"PRIu64, f);
-        if (get_store_rows(db, where, &row) != 0) {
-            status = 1;
-            goto end_map_files;
-        };
-
-        // Adjust new map sizes and free space if larger allocations
-        if (ctx->allocation_size > previous_layout.allocation_size && row.size < ctx->map_size) {
-            if (f > dv) {
-                map_size = rm; // Last store might be smaller than the rest
-                free_space = rm - row.size + row.free_space;
-            } else {
-                map_size = ctx->map_size;
-                free_space = ctx->map_size - row.size + row.free_space;
-            }
-        } else {
-            map_size = row.size;
-            free_space = row.free_space;
-        }
-
-        /* Delete old data if new data is coming in*/
-        if (row.free_locations) {
-            memset(query, '\0', BUFSIZ);
-            sprintf(query, "DELETE from map_stores WHERE Id=%"PRIu64";", f);
-            if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
-                fprintf(stderr, "Failed to delete from table map_stores\n");
-                fprintf(stderr, "SQL error: %s\n", err_msg);
-                sqlite3_free(err_msg);
-                goto end_map_files;
-            }
-        }
-
-        /* Insert new data */
-        memset(query, '\0', BUFSIZ);
-        json_positions = expand_free_space_list(row.free_locations, row.size, map_size);
-        sprintf(query,
-                "INSERT INTO `map_stores` VALUES(%"PRIu64", '%s', %"PRIu64", %"PRIu64");",
-                f,
-                json_object_to_json_string(json_positions),
-                free_space,
-                map_size);
-
-        if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
-            fprintf(stderr, "Failed to insert to table map_stores\n");
-            fprintf(stderr, "SQL error: %s\n", err_msg);
-            sqlite3_free(err_msg);
-            json_object_put(json_positions);
-            goto end_map_files;
-        }
-
-        json_object_put(json_positions);
-
-        // Create map file
-        // Only increase map size. Never decrease.
-        if (ctx->allocation_size > previous_layout.allocation_size && row.size < map_size) {
-            memset(mapstore_path, '\0', BUFSIZ);
-            sprintf(mapstore_path, "%s%"PRIu64".map", ctx->mapstore_path, f);
-            if (create_map_store(mapstore_path, map_size) != 0) {
-                fprintf(stderr,
-                    "Failed to create mapped file: %s of size %"PRIu64,
-                    ctx->mapstore_path,
-                    map_size);
-
-                status = 1;
-                goto end_map_files;
-            };
-        }
-    }
-
-end_map_files:
-    if (db) {
-        sqlite3_close(db);
-    }
-
-    return status;
 }
