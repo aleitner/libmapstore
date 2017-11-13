@@ -379,3 +379,22 @@ int delete_by_hash_from_data_locations(sqlite3 *db, char *hash) {
 
     return status;
 }
+
+int delete_by_id_from_map_stores(sqlite3 *db, uint64_t id) {
+    int status = 0;
+    char *err_msg = NULL;
+
+    char *query = NULL;
+    asprintf(&query, "DELETE FROM `map_stores` WHERE Id=%"PRIu64, id);
+
+    if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
+        fprintf(stderr, "Failed to delete hash from map_stores\n");
+        fprintf(stderr, "SQL error: %s\n", err_msg);
+        sqlite3_free(err_msg);
+        status = 1;
+    }
+
+    free(query);
+
+    return status;
+}

@@ -56,11 +56,6 @@ end_map_plan:
 }
 
 int map_files(mapstore_ctx *ctx) {
-    /** TODO: Separate database calls into separate database_utils
-    *         functions so we can test better and replace with
-    *         another database if sqlite doesn't work out
-    */
-
     int status = 0;
 
     uint64_t dv = ctx->allocation_size / ctx->map_size; // NUmber of files to be created except smaller tail file
@@ -89,14 +84,13 @@ int map_files(mapstore_ctx *ctx) {
     /* Insert table layout. We keep track of the change over time so no need to delete old rows */
     memset(query, '\0', BUFSIZ);
     sprintf(query,
-            "INSERT INTO `mapstore_layout` (map_size,allocation_size) VALUES(%"PRIu64",%"PRIu64");",
+            "(map_size,allocation_size) VALUES(%"PRIu64",%"PRIu64")",
             ctx->map_size,
             ctx->allocation_size);
 
-    if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
-        fprintf(stderr, "Failed to create mapstore_layout\n");
-        fprintf(stderr, "SQL error: %s\n", err_msg);
-        sqlite3_free(err_msg);
+    char *mapstore_layout = "mapstore_layout";
+    if (insert_to(db, mapstore_layout, query) != 0) {
+        status = 1;
         goto end_map_files;
     }
 
@@ -135,10 +129,8 @@ int map_files(mapstore_ctx *ctx) {
         if (row.free_locations) {
             memset(query, '\0', BUFSIZ);
             sprintf(query, "DELETE from map_stores WHERE Id=%"PRIu64";", f);
-            if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
-                fprintf(stderr, "Failed to delete from table map_stores\n");
-                fprintf(stderr, "SQL error: %s\n", err_msg);
-                sqlite3_free(err_msg);
+            if (delete_by_id_from_map_stores(db, f) != 0) {
+                status = 1;
                 goto end_map_files;
             }
         }
@@ -147,21 +139,19 @@ int map_files(mapstore_ctx *ctx) {
         memset(query, '\0', BUFSIZ);
         json_positions = expand_free_space_list(row.free_locations, row.size, map_size);
         sprintf(query,
-                "INSERT INTO `map_stores` VALUES(%"PRIu64", '%s', %"PRIu64", %"PRIu64");",
+                "VALUES(%"PRIu64", '%s', %"PRIu64", %"PRIu64")",
                 f,
                 json_object_to_json_string(json_positions),
                 free_space,
                 map_size);
 
-        if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
-            fprintf(stderr, "Failed to insert to table map_stores\n");
-            fprintf(stderr, "SQL error: %s\n", err_msg);
-            sqlite3_free(err_msg);
-            json_object_put(json_positions);
+        json_object_put(json_positions);
+
+        char *map_stores = "map_stores";
+        if (insert_to(db, map_stores, query) != 0) {
+            status = 1;
             goto end_map_files;
         }
-
-        json_object_put(json_positions);
 
         // Create map file
         // Only increase map size. Never decrease.
