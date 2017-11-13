@@ -60,7 +60,6 @@ int map_files(mapstore_ctx *ctx) {
 
     uint64_t dv = ctx->allocation_size / ctx->map_size; // NUmber of files to be created except smaller tail file
     uint64_t rm = ctx->allocation_size % ctx->map_size; // Size of smaller tail file
-    ctx->total_mapstores = (rm > 0) ? dv + 2 : dv + 1;   // If there is a remainder make sure we create a row an map for that smaller file
 
     char mapstore_path[BUFSIZ];         // Path to map_store
     char query[BUFSIZ];                 // SQL query
@@ -100,7 +99,7 @@ int map_files(mapstore_ctx *ctx) {
     uint64_t free_space;    // Free space for mapstore
     uint64_t id;            // Mapstore Id
 
-    for (uint64_t f = 1; f < ctx->total_mapstores; f++) {
+    for (uint64_t f = 1; f <= ctx->total_mapstores; f++) {
 
         /* Check if mapstore already exists */
         char where[BUFSIZ];

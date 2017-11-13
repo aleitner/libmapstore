@@ -42,11 +42,99 @@ void test_json_free_space_array() {
 }
 
 void test_initialize_mapstore() {
+
+    sprintf(test_case, "%s: Should successfully initialize context", __func__);
+    mapstore_ctx ctx;
+    mapstore_opts opts;
+
+    opts.allocation_size = 10737418240; // 10GB
+    opts.map_size = 2147483648;         // 2GB
+    opts.path = folder;
+
+    if (initialize_mapstore(&ctx, opts) != 0) {
+        printf("Error initializing mapstore\n");
+        return;
+    }
+
+    sprintf(test_case, "%s: Should set allocation size", __func__);
+    sprintf(actual, "%"PRIu64, ctx.allocation_size);
+    sprintf(expected, "%"PRIu64, opts.allocation_size);
+    if (ctx.allocation_size == opts.allocation_size) {
+        test_pass(test_case);
+    } else {
+        test_fail(test_case, expected, actual);
+    }
+
     memset(expected, '\0', BUFSIZ);
     memset(actual, '\0', BUFSIZ);
     memset(test_case, '\0', BUFSIZ);
+    sprintf(test_case, "%s: Should set map_size", __func__);
+    sprintf(actual, "%"PRIu64, ctx.map_size);
+    sprintf(expected, "%"PRIu64, opts.map_size);
+    if (ctx.map_size == opts.map_size) {
+        test_pass(test_case);
+    } else {
+        test_fail(test_case, expected, actual);
+    }
 
-    sprintf(test_case, "%s: Should successfully initialize context", __func__);
+    memset(expected, '\0', BUFSIZ);
+    memset(actual, '\0', BUFSIZ);
+    memset(test_case, '\0', BUFSIZ);
+    sprintf(test_case, "%s: Should set total_mapstores", __func__);
+    sprintf(actual, "%"PRIu64, ctx.total_mapstores);
+    sprintf(expected, "5");
+    if (ctx.total_mapstores == 5) {
+        test_pass(test_case);
+    } else {
+        test_fail(test_case, expected, actual);
+    }
+
+    memset(expected, '\0', BUFSIZ);
+    memset(actual, '\0', BUFSIZ);
+    memset(test_case, '\0', BUFSIZ);
+    sprintf(test_case, "%s: Should set mapstore_path", __func__);
+    sprintf(actual, "%s", ctx.mapstore_path);
+    sprintf(expected, "%s%cshards%c", folder, separator(), separator());
+    if (strcmp(expected, actual) == 0) {
+        test_pass(test_case);
+    } else {
+        test_fail(test_case, expected, actual);
+    }
+
+    memset(expected, '\0', BUFSIZ);
+    memset(actual, '\0', BUFSIZ);
+    memset(test_case, '\0', BUFSIZ);
+    sprintf(test_case, "%s: Should set database_path", __func__);
+    sprintf(actual, "%s", ctx.database_path);
+    sprintf(expected, "%s%cshards.sqlite", folder, separator());
+    if (strcmp(expected, actual) == 0) {
+        test_pass(test_case);
+    } else {
+        test_fail(test_case, expected, actual);
+    }
+
+    memset(expected, '\0', BUFSIZ);
+    memset(actual, '\0', BUFSIZ);
+    memset(test_case, '\0', BUFSIZ);
+    sprintf(test_case, "%s: Should create store directory", __func__);
+    test_fail(test_case, NULL, NULL);
+
+    memset(expected, '\0', BUFSIZ);
+    memset(actual, '\0', BUFSIZ);
+    memset(test_case, '\0', BUFSIZ);
+    sprintf(test_case, "%s: Should prepare_tables", __func__);
+    test_fail(test_case, NULL, NULL);
+
+    memset(expected, '\0', BUFSIZ);
+    memset(actual, '\0', BUFSIZ);
+    memset(test_case, '\0', BUFSIZ);
+    sprintf(test_case, "%s: Should allocate mapstores", __func__);
+    test_fail(test_case, NULL, NULL);
+
+    memset(expected, '\0', BUFSIZ);
+    memset(actual, '\0', BUFSIZ);
+    memset(test_case, '\0', BUFSIZ);
+    sprintf(test_case, "%s: Should insert mapstores into database", __func__);
     test_fail(test_case, NULL, NULL);
 }
 
@@ -101,6 +189,10 @@ int main(void)
     if ((folder = getenv("TMPDIR")) == 0) {
         printf("You need to set $TMPDIR before running. (e.g. export TMPDIR=/tmp/)\n");
         exit(1);
+    }
+
+    if (folder[strlen(folder)-1] == separator()) {
+        folder[strlen(folder)-1] = '\0';
     }
 
     printf("Test Suite: API\n");

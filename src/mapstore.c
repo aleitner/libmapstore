@@ -21,6 +21,10 @@ MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts) {
     ctx->allocation_size = opts.allocation_size;
     ctx->map_size = (opts.map_size) ? opts.map_size : 2147483648; // Default to 2GB if not map_size provided
 
+    uint64_t dv = ctx->allocation_size / ctx->map_size; // NUmber of files to be created except smaller tail file
+    uint64_t rm = ctx->allocation_size % ctx->map_size; // Size of smaller tail file
+    ctx->total_mapstores = (rm > 0) ? dv + 1: dv;   // If there is a remainder make sure we create a row an map for that smaller file
+
     /* Format path for shardata and database n*/
     char *base_path = NULL;
     if (opts.path != NULL) {
