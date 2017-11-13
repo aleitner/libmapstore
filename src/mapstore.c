@@ -92,7 +92,7 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, char *hash) {
     json_object *used_space_obj = NULL;
     json_object *all_data_locations = json_object_new_object();
 
-    if (sqlite3_open(ctx->database_path, &db) != SQLITE_OK) {
+    if (sqlite3_open_v2(ctx->database_path, &db, SQLITE_OPEN_READWRITE, NULL) != SQLITE_OK) {
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
         status = 1;
         goto end_store_data;
@@ -184,7 +184,7 @@ MAPSTORE_API int retrieve_data(mapstore_ctx *ctx, int fd, char *hash) {
     json_object *positions = NULL;
 
     /* Open Database */
-    if (sqlite3_open(ctx->database_path, &db) != SQLITE_OK) {
+    if (sqlite3_open_v2(ctx->database_path, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK) {
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
         status = 1;
         goto end_retrieve_data;
@@ -229,7 +229,7 @@ MAPSTORE_API int delete_data(mapstore_ctx *ctx, char *hash) {
     char set[BUFSIZ];
 
     /* Open Database */
-    if (sqlite3_open(ctx->database_path, &db) != SQLITE_OK) {
+    if (sqlite3_open_v2(ctx->database_path, &db, SQLITE_OPEN_READWRITE, NULL) != SQLITE_OK) {
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
         status = 1;
         goto end_delete_data;

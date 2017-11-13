@@ -5,7 +5,7 @@ int prepare_tables(char *database_path) {
     char *err_msg = NULL;
     sqlite3 *db = NULL;
 
-    if (sqlite3_open(database_path, &db) != SQLITE_OK) {
+    if (sqlite3_open_v2(database_path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL) != SQLITE_OK) {
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
         status = 1;
         goto end_prepare_tables;
@@ -22,6 +22,8 @@ int prepare_tables(char *database_path) {
         fprintf(stderr, "Failed to create table\n");
         fprintf(stderr, "SQL error: %s\n", err_msg);
         sqlite3_free(err_msg);
+        status = 1;
+        goto end_prepare_tables;
     }
 
     char *map_stores = "CREATE TABLE IF NOT EXISTS `map_stores` ( "
@@ -34,6 +36,7 @@ int prepare_tables(char *database_path) {
         fprintf(stderr, "Failed to create table\n");
         fprintf(stderr, "SQL error: %s\n", err_msg);
         sqlite3_free(err_msg);
+        status = 1;
         goto end_prepare_tables;
     }
 
@@ -46,6 +49,7 @@ int prepare_tables(char *database_path) {
         fprintf(stderr, "Failed to create table\n");
         fprintf(stderr, "SQL error: %s\n", err_msg);
         sqlite3_free(err_msg);
+        status = 1;
         goto end_prepare_tables;
     }
 

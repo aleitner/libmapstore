@@ -1,3 +1,11 @@
+#ifndef LEITNERTEST_H
+#define LEITNERTEST_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 #include <stdio.h>
 #include <assert.h>
 
@@ -40,3 +48,9 @@ int test_results() {
 
     return 0;
 }
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* LEITNERTEST_H */

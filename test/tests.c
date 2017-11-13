@@ -1,12 +1,12 @@
 #include "tests.h"
 
 char *folder = NULL;
+char test_case[BUFSIZ];
+char expected[BUFSIZ];
+char actual[BUFSIZ];
 
 void test_json_free_space_array() {
     json_object *jarray = NULL;
-    char expected[BUFSIZ];
-    char actual[BUFSIZ];
-    char test_case[BUFSIZ];
 
     memset(expected, '\0', BUFSIZ);
     memset(actual, '\0', BUFSIZ);
@@ -41,6 +41,60 @@ void test_json_free_space_array() {
     return;
 }
 
+void test_initialize_mapstore() {
+    memset(expected, '\0', BUFSIZ);
+    memset(actual, '\0', BUFSIZ);
+    memset(test_case, '\0', BUFSIZ);
+
+    sprintf(test_case, "%s: Should successfully initialize context", __func__);
+    test_fail(test_case, NULL, NULL);
+}
+
+void test_store_data() {
+    memset(expected, '\0', BUFSIZ);
+    memset(actual, '\0', BUFSIZ);
+    memset(test_case, '\0', BUFSIZ);
+
+    sprintf(test_case, "%s: Should successfully store data", __func__);
+    test_fail(test_case, NULL, NULL);
+}
+
+void test_retrieve_data() {
+    memset(expected, '\0', BUFSIZ);
+    memset(actual, '\0', BUFSIZ);
+    memset(test_case, '\0', BUFSIZ);
+
+    sprintf(test_case, "%s: Should successfully retrieve data", __func__);
+    test_fail(test_case, NULL, NULL);
+}
+
+void test_delete_data() {
+    memset(expected, '\0', BUFSIZ);
+    memset(actual, '\0', BUFSIZ);
+    memset(test_case, '\0', BUFSIZ);
+
+    sprintf(test_case, "%s: Should successfully delete data", __func__);
+    test_fail(test_case, NULL, NULL);
+}
+
+void test_get_data_info() {
+    memset(expected, '\0', BUFSIZ);
+    memset(actual, '\0', BUFSIZ);
+    memset(test_case, '\0', BUFSIZ);
+
+    sprintf(test_case, "%s: Should successfully retrieve data meta", __func__);
+    test_fail(test_case, NULL, NULL);
+}
+
+void test_get_get_store_info() {
+    memset(expected, '\0', BUFSIZ);
+    memset(actual, '\0', BUFSIZ);
+    memset(test_case, '\0', BUFSIZ);
+
+    sprintf(test_case, "%s: Should successfully retrieve store meta", __func__);
+    test_fail(test_case, NULL, NULL);
+}
+
 int main(void)
 {
     // Make sure we have a tmp folder
@@ -50,6 +104,12 @@ int main(void)
     }
 
     printf("Test Suite: API\n");
+    test_initialize_mapstore();
+    test_store_data();
+    test_retrieve_data();
+    test_delete_data();
+    test_get_data_info();
+    test_get_get_store_info();
     printf("\n");
 
     printf("Test Suite: Database Utils\n");

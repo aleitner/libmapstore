@@ -69,7 +69,7 @@ int map_files(mapstore_ctx *ctx) {
     json_object *json_positions = NULL; // Positions of free space
 
     /* Open Database */
-    if (sqlite3_open(ctx->database_path, &db) != SQLITE_OK) {
+    if (sqlite3_open_v2(ctx->database_path, &db, SQLITE_OPEN_READWRITE, NULL) != SQLITE_OK) {
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
         status = 1;
         goto end_map_files;
