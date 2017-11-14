@@ -97,21 +97,25 @@ void test_initialize_mapstore() {
         return;
     }
 
+    /* */
     memset(expected, '\0', BUFSIZ);
     memset(actual, '\0', BUFSIZ);
     memset(test_case, '\0', BUFSIZ);
     sprintf(test_case, "%s: Should set allocation size", __func__);
     assert_equal_str(test_case, expected, actual);
 
+    /* */
     memset(test_case, '\0', BUFSIZ);
     sprintf(test_case, "%s: Should set map_size", __func__);
     assert_equal_int64(test_case, opts.map_size, ctx.map_size);
 
+    /* */
     memset(test_case, '\0', BUFSIZ);
     sprintf(test_case, "%s: Should set total_mapstores", __func__);
     int expected_total_mapstores = 5;
     assert_equal_int64(test_case, expected_total_mapstores, ctx.total_mapstores);
 
+    /* */
     memset(expected, '\0', BUFSIZ);
     memset(actual, '\0', BUFSIZ);
     memset(test_case, '\0', BUFSIZ);
@@ -120,6 +124,7 @@ void test_initialize_mapstore() {
     sprintf(expected, "%s%cshards%c", folder, separator(), separator());
     assert_equal_str(test_case, expected, actual);
 
+    /* */
     memset(expected, '\0', BUFSIZ);
     memset(actual, '\0', BUFSIZ);
     memset(test_case, '\0', BUFSIZ);
@@ -128,6 +133,7 @@ void test_initialize_mapstore() {
     sprintf(expected, "%s%cshards.sqlite", folder, separator());
     assert_equal_str(test_case, expected, actual);
 
+    /* */
     memset(test_case, '\0', BUFSIZ);
     sprintf(test_case, "%s: Should create store directory", __func__);
     struct stat sb;
@@ -137,11 +143,9 @@ void test_initialize_mapstore() {
         test_fail(test_case, NULL, NULL);
     }
 
-    memset(expected, '\0', BUFSIZ);
-    memset(actual, '\0', BUFSIZ);
+    /* */
     memset(test_case, '\0', BUFSIZ);
     sprintf(test_case, "%s: Should prepare 3 tables", __func__);
-
     /* Open Database */
     if (sqlite3_open_v2(ctx.database_path, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK) {
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
@@ -164,17 +168,40 @@ void test_initialize_mapstore() {
 
     assert_equal_int64(test_case, expected_count, count);
 
-    memset(expected, '\0', BUFSIZ);
-    memset(actual, '\0', BUFSIZ);
+    /* */
     memset(test_case, '\0', BUFSIZ);
     sprintf(test_case, "%s: Should allocate mapstores", __func__);
-    test_fail(test_case, NULL, NULL);
+    char store_path[BUFSIZ];
+    struct stat st;
+    count = 0;
+    for (int i = 1; i <= ctx.total_mapstores; i++) {
+        memset(store_path, '\0', BUFSIZ);
+        sprintf(store_path, "%s%d.map", ctx.mapstore_path, i);
+        if (stat(store_path, &st) == 0) {
+            if ((i == ctx.total_mapstores && st.st_size == ctx.allocation_size % ctx.total_mapstores) ||
+                st.st_size == ctx.map_size) {
+                count +=1;
+            }
+        }
+    }
+    assert_equal_int64(test_case, ctx.total_mapstores, count);
 
-    memset(expected, '\0', BUFSIZ);
-    memset(actual, '\0', BUFSIZ);
+    /* Test if data was inserted to map_stores */
     memset(test_case, '\0', BUFSIZ);
-    sprintf(test_case, "%s: Should insert mapstores into database", __func__);
-    test_fail(test_case, NULL, NULL);
+    sprintf(test_case, "%s: Should insert mapstore meta into database", __func__);
+    count = 0;
+    memset(query, '\0', BUFSIZ);
+    sprintf(query, "SELECT count(*) FROM 'map_stores';");
+    count += get_count(db, query);
+    assert_equal_int64(test_case, ctx.total_mapstores, count);
+
+    /* Test if data was inserted to mapstore_layout */
+    memset(test_case, '\0', BUFSIZ);
+    sprintf(test_case, "%s: Should insert mapstore_layout meta into database", __func__);
+    mapstore_layout_row row;
+    get_latest_layout_row(db, &row);
+    assert_equal_int64(test_case, ctx.map_size, row.map_size);
+    assert_equal_int64(test_case, ctx.allocation_size, row.allocation_size);
 }
 
 void test_store_data() {
@@ -236,11 +263,11 @@ int main(void)
 
     printf("Test Suite: API\n");
     test_initialize_mapstore();
-    // test_store_data();
-    // test_retrieve_data();
-    // test_delete_data();
-    // test_get_data_info();
-    // test_get_get_store_info();
+    test_store_data();
+    test_retrieve_data();
+    test_delete_data();
+    test_get_data_info();
+    test_get_get_store_info();
     printf("\n");
 
     printf("Test Suite: Database Utils\n");
