@@ -8,6 +8,7 @@ extern "C" {
 
 #include <stdio.h>
 #include <assert.h>
+#include <stddef.h>
 
 #define KRED    "\x1B[31m"
 #define KGRN    "\x1B[32m"
@@ -20,11 +21,17 @@ int tests_failed = 0;
 int test_results();
 void test_fail(char *msg, char *expected, char *actual);
 void test_pass(char *msg);
+void assert_equal_int64(char *test_case, uint64_t expected, uint64_t actual);
+void assert_equal_str(char *test_case, char *expected, char *actual);
 
 void test_fail(char *msg, char *expected, char *actual) {
     printf("\t" KRED "FAIL" RESET " %s\n", msg);
-    printf("\t\texpected array: %s\n", expected);
-    printf("\t\tactual array:   %s\n", actual);
+
+    if (expected && actual) {
+        printf("\t\texpected: %s ", expected);
+        printf("\tactual:   %s\n", actual);
+    }
+
     tests_failed += 1;
     tests_ran += 1;
 }
@@ -47,6 +54,34 @@ int test_results() {
     }
 
     return 0;
+}
+
+void assert_equal_int64(char *test_case, uint64_t expected, uint64_t actual) {
+    char *actual_str = NULL;
+    char *expected_str = NULL;
+
+    if (expected == actual) {
+        test_pass(test_case);
+    } else {
+        asprintf(&actual_str, "%"PRIu64, actual);
+        asprintf(&expected_str, "%"PRIu64, expected);
+        test_fail(test_case, expected_str, actual_str);
+    }
+
+    free(actual_str);
+    free(expected_str);
+
+    return;
+}
+
+void assert_equal_str(char *test_case, char *expected, char *actual) {
+    if (strcmp(expected, actual) == 0) {
+        test_pass(test_case);
+    } else {
+        test_fail(test_case, expected, actual);
+    }
+
+    return;
 }
 
 #ifdef __cplusplus

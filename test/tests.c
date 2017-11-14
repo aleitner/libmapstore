@@ -5,6 +5,41 @@ char test_case[BUFSIZ];
 char expected[BUFSIZ];
 char actual[BUFSIZ];
 
+int get_count(sqlite3 *db, char *query) {
+    int rc;
+    char column_name[BUFSIZ];
+    sqlite3_stmt *stmt = NULL;
+
+    if ((rc = sqlite3_prepare_v2(db, query, BUFSIZ, &stmt, 0)) != SQLITE_OK) {
+        fprintf(stderr, "sql error: %s\n", sqlite3_errmsg(db));
+    } else while((rc = sqlite3_step(stmt)) != SQLITE_DONE) {
+        switch(rc) {
+            case SQLITE_BUSY:
+                fprintf(stderr, "Database is busy\n");
+                sleep(1);
+                break;
+            case SQLITE_ERROR:
+                fprintf(stderr, "step error: %s\n", sqlite3_errmsg(db));
+                return 0;
+            case SQLITE_ROW:
+                {
+                    int n = sqlite3_column_count(stmt);
+                    int i;
+                    for (i = 0; i < n; i++) {
+                        memset(column_name, '\0', BUFSIZ);
+                        strcpy(column_name, sqlite3_column_name(stmt, i));
+
+                        if (strcmp(column_name, "count(*)") == 0) {
+                            return sqlite3_column_int64(stmt, i);
+                        }
+                    }
+                }
+        }
+    }
+
+    return 0;
+}
+
 void test_json_free_space_array() {
     json_object *jarray = NULL;
 
@@ -42,6 +77,12 @@ void test_json_free_space_array() {
 }
 
 void test_initialize_mapstore() {
+    sqlite3 *db = NULL; // Database
+    char query[BUFSIZ];
+
+    memset(expected, '\0', BUFSIZ);
+    memset(actual, '\0', BUFSIZ);
+    memset(test_case, '\0', BUFSIZ);
 
     sprintf(test_case, "%s: Should successfully initialize context", __func__);
     mapstore_ctx ctx;
@@ -56,38 +97,20 @@ void test_initialize_mapstore() {
         return;
     }
 
-    sprintf(test_case, "%s: Should set allocation size", __func__);
-    sprintf(actual, "%"PRIu64, ctx.allocation_size);
-    sprintf(expected, "%"PRIu64, opts.allocation_size);
-    if (ctx.allocation_size == opts.allocation_size) {
-        test_pass(test_case);
-    } else {
-        test_fail(test_case, expected, actual);
-    }
-
     memset(expected, '\0', BUFSIZ);
     memset(actual, '\0', BUFSIZ);
+    memset(test_case, '\0', BUFSIZ);
+    sprintf(test_case, "%s: Should set allocation size", __func__);
+    assert_equal_str(test_case, expected, actual);
+
     memset(test_case, '\0', BUFSIZ);
     sprintf(test_case, "%s: Should set map_size", __func__);
-    sprintf(actual, "%"PRIu64, ctx.map_size);
-    sprintf(expected, "%"PRIu64, opts.map_size);
-    if (ctx.map_size == opts.map_size) {
-        test_pass(test_case);
-    } else {
-        test_fail(test_case, expected, actual);
-    }
+    assert_equal_int64(test_case, opts.map_size, ctx.map_size);
 
-    memset(expected, '\0', BUFSIZ);
-    memset(actual, '\0', BUFSIZ);
     memset(test_case, '\0', BUFSIZ);
     sprintf(test_case, "%s: Should set total_mapstores", __func__);
-    sprintf(actual, "%"PRIu64, ctx.total_mapstores);
-    sprintf(expected, "5");
-    if (ctx.total_mapstores == 5) {
-        test_pass(test_case);
-    } else {
-        test_fail(test_case, expected, actual);
-    }
+    int expected_total_mapstores = 5;
+    assert_equal_int64(test_case, expected_total_mapstores, ctx.total_mapstores);
 
     memset(expected, '\0', BUFSIZ);
     memset(actual, '\0', BUFSIZ);
@@ -95,11 +118,7 @@ void test_initialize_mapstore() {
     sprintf(test_case, "%s: Should set mapstore_path", __func__);
     sprintf(actual, "%s", ctx.mapstore_path);
     sprintf(expected, "%s%cshards%c", folder, separator(), separator());
-    if (strcmp(expected, actual) == 0) {
-        test_pass(test_case);
-    } else {
-        test_fail(test_case, expected, actual);
-    }
+    assert_equal_str(test_case, expected, actual);
 
     memset(expected, '\0', BUFSIZ);
     memset(actual, '\0', BUFSIZ);
@@ -107,23 +126,43 @@ void test_initialize_mapstore() {
     sprintf(test_case, "%s: Should set database_path", __func__);
     sprintf(actual, "%s", ctx.database_path);
     sprintf(expected, "%s%cshards.sqlite", folder, separator());
-    if (strcmp(expected, actual) == 0) {
+    assert_equal_str(test_case, expected, actual);
+
+    memset(test_case, '\0', BUFSIZ);
+    sprintf(test_case, "%s: Should create store directory", __func__);
+    struct stat sb;
+    if (stat(ctx.mapstore_path, &sb) == 0 && S_ISDIR(sb.st_mode)) {
         test_pass(test_case);
     } else {
-        test_fail(test_case, expected, actual);
+        test_fail(test_case, NULL, NULL);
     }
 
     memset(expected, '\0', BUFSIZ);
     memset(actual, '\0', BUFSIZ);
     memset(test_case, '\0', BUFSIZ);
-    sprintf(test_case, "%s: Should create store directory", __func__);
-    test_fail(test_case, NULL, NULL);
+    sprintf(test_case, "%s: Should prepare 3 tables", __func__);
 
-    memset(expected, '\0', BUFSIZ);
-    memset(actual, '\0', BUFSIZ);
-    memset(test_case, '\0', BUFSIZ);
-    sprintf(test_case, "%s: Should prepare_tables", __func__);
-    test_fail(test_case, NULL, NULL);
+    /* Open Database */
+    if (sqlite3_open_v2(ctx.database_path, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK) {
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        test_fail(test_case, NULL, NULL);
+    }
+
+    int count = 0;
+    int expected_count = 3;
+    memset(query, '\0', BUFSIZ);
+    sprintf(query, "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='data_locations';");
+    count += get_count(db, query);
+
+    memset(query, '\0', BUFSIZ);
+    sprintf(query, "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='map_stores';");
+    count += get_count(db, query);
+
+    memset(query, '\0', BUFSIZ);
+    sprintf(query, "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='mapstore_layout';");
+    count += get_count(db, query);
+
+    assert_equal_int64(test_case, expected_count, count);
 
     memset(expected, '\0', BUFSIZ);
     memset(actual, '\0', BUFSIZ);
@@ -197,11 +236,11 @@ int main(void)
 
     printf("Test Suite: API\n");
     test_initialize_mapstore();
-    test_store_data();
-    test_retrieve_data();
-    test_delete_data();
-    test_get_data_info();
-    test_get_get_store_info();
+    // test_store_data();
+    // test_retrieve_data();
+    // test_delete_data();
+    // test_get_data_info();
+    // test_get_get_store_info();
     printf("\n");
 
     printf("Test Suite: Database Utils\n");
