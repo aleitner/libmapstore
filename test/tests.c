@@ -202,6 +202,18 @@ void test_initialize_mapstore() {
     get_latest_layout_row(db, &row);
     assert_equal_int64(test_case, ctx.map_size, row.map_size);
     assert_equal_int64(test_case, ctx.allocation_size, row.allocation_size);
+
+
+    /* Delete everything */
+    for (int i = 1; i <= ctx.total_mapstores; i++) {
+        memset(store_path, '\0', BUFSIZ);
+        sprintf(store_path, "%s%d.map", ctx.mapstore_path, i);
+        remove(store_path);
+    }
+    remove(ctx.database_path);
+    if (db) {
+        sqlite3_close(db);
+    }
 }
 
 void test_store_data() {
