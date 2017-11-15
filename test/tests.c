@@ -2,10 +2,12 @@
 
 char *folder = NULL;
 FILE *data = NULL;
+char *data_hash = NULL;
+FILE *data2 = NULL;
+char *data_hash2 = NULL;
 char test_case[BUFSIZ];
 char expected[BUFSIZ];
 char actual[BUFSIZ];
-char *data_hash = NULL;
 
 int get_file_hash(int fd, char **hash) {
     ssize_t read_len = 0;
@@ -293,11 +295,8 @@ void test_store_data() {
         test_fail(test_case, NULL, NULL);
     }
 
-    memset(expected, '\0', BUFSIZ);
-    memset(actual, '\0', BUFSIZ);
     memset(test_case, '\0', BUFSIZ);
     sprintf(test_case, "%s: Should successfully store data", __func__);
-
     if ((store_data(&ctx, fileno(data), data_hash)) != 0) {
         test_fail(test_case, NULL, NULL);
     }
@@ -358,6 +357,40 @@ void test_store_data() {
             assert_equal_str(test_case, expected, (char *)json_object_to_json_string(store_row.free_locations));
         }
     }
+
+    memset(test_case, '\0', BUFSIZ);
+    sprintf(test_case, "%s: Should fail to store data with same hash", __func__);
+    if ((store_data(&ctx, fileno(data), data_hash)) != 0) {
+        test_pass(test_case);
+    } else {
+        test_fail(test_case, NULL, NULL);
+    }
+
+    memset(test_case, '\0', BUFSIZ);
+    sprintf(test_case, "%s: Should successfully store more data", __func__);
+    if ((store_data(&ctx, fileno(data2), data_hash2)) != 0) {
+        test_fail(test_case, NULL, NULL);
+    }
+
+    memset(test_case, '\0', BUFSIZ);
+    sprintf(test_case, "%s: Should insert hash into database", __func__);
+    get_data_locations_row(db, data_hash2, &row);
+    assert_equal_str(test_case, data_hash2, row.hash);
+
+    memset(test_case, '\0', BUFSIZ);
+    sprintf(test_case, "%s: Should mark data uploaded as true", __func__);
+    assert_equal_int64(test_case, true, row.uploaded);
+
+    memset(test_case, '\0', BUFSIZ);
+    sprintf(test_case, "%s: Should mark data size as 256", __func__);
+    assert_equal_int64(test_case, 256, row.size);
+
+    memset(test_case, '\0', BUFSIZ);
+    memset(expected, '\0', BUFSIZ);
+    sprintf(test_case, "%s: Should set positions in map store", __func__);
+    sprintf(expected, "{ \"3\": [ [ 0, 0, 127 ] ], \"4\": [ [ 128, 0, 127 ] ] }");
+    assert_equal_str(test_case, expected, (char *)json_object_to_json_string(row.positions));
+
 
     for (int i = 1; i <= ctx.total_mapstores; i++) {
         memset(store_path, '\0', BUFSIZ);
@@ -422,11 +455,18 @@ int main(void)
     asprintf(&file_path, "%stest.data", folder);
     data = fopen(file_path, "w+");
 
+    char *file_path2 = NULL;
+    asprintf(&file_path2, "%stest.data", folder);
+    data2 = fopen(file_path2, "w+");
+
     time_t t;
     srand((unsigned) time(&t));
     for (int i = 0; i <= 256; i++) {
         fseek(data, i, SEEK_SET);
         fputc("ABCDEFGHIJKLMNOPQRSTUVWXYZ"[rand() % 26], data);
+
+        fseek(data2, i, SEEK_SET);
+        fputc("ABCDEFGHIJKLMNOPQRSTUVWXYZ"[rand() % 26], data2);
     }
 
     if ((get_file_hash(fileno(data), &data_hash)) != 0) {
@@ -454,13 +494,26 @@ int main(void)
         fclose(data);
     }
 
+    if (data2) {
+        fclose(data2);
+    }
+
     if (file_path) {
         remove(file_path);
         free(file_path);
     }
 
+    if (file_path2) {
+        remove(file_path2);
+        free(file_path2);
+    }
+
     if (data_hash) {
         free(data_hash);
+    }
+
+    if (data_hash2) {
+        free(data_hash2);
     }
 
     return test_results();

@@ -132,7 +132,7 @@ int get_store_rows(sqlite3 *db, char *where, mapstore_row *row) {
 
     memset(query, '\0', BUFSIZ);
     sprintf(query, "SELECT * FROM `map_stores` %s LIMIT 1", where);
-    if ((rc = sqlite3_prepare_v2(db, query, BUFSIZ, &stmt, 0)) != SQLITE_OK) {
+    if ((rc = sqlite3_prepare_v2(db, query, strlen(query), &stmt, 0)) != SQLITE_OK) {
         fprintf(stderr, "sql error: %s\n", sqlite3_errmsg(db));
         status = 1;
         goto end_mapstore_row;
@@ -195,7 +195,7 @@ int get_data_locations_row(sqlite3 *db, char *hash, data_locations_row *row) {
 
     memset(query, '\0', BUFSIZ);
     sprintf(query, "SELECT * FROM `data_locations` WHERE hash='%s' ORDER BY Id DESC LIMIT 1", hash);
-    if ((rc = sqlite3_prepare_v2(db, query, BUFSIZ, &stmt, 0)) != SQLITE_OK) {
+    if ((rc = sqlite3_prepare_v2(db, query, strlen(query), &stmt, 0)) != SQLITE_OK) {
         fprintf(stderr, "sql error: %s\n", sqlite3_errmsg(db));
         status = 1;
         goto end_data_locations_row;
@@ -289,9 +289,12 @@ int update_map_store(sqlite3 *db, char *where, char *set) {
     char *query = NULL;
     asprintf(&query, "UPDATE `map_stores` %s %s LIMIT 1", set, where);
 
+    printf("%s\n", query);
+
     if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
         fprintf(stderr, "Failed to update map_stores\n");
         fprintf(stderr, "SQL error: %s\n", err_msg);
+        fprintf(stderr, "SQL error: %d\n", sqlite3_extended_errcode(db));
         sqlite3_free(err_msg);
         status = 1;
     }

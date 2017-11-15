@@ -18,7 +18,7 @@ int get_map_plan(sqlite3 *db,
     uint64_t min = 0;
     // Get info for each map store
 
-    for (uint64_t f = 1; f < total_stores; f++) {
+    for (uint64_t f = 1; f <= total_stores; f++) {
         uint64_t min = (remaining > sector_min(data_size)) ? sector_min(data_size) : remaining;
         memset(where, '\0', BUFSIZ);
         sprintf(where, "WHERE Id = %"PRIu64" AND free_space > %"PRIu64, f, min);
@@ -27,7 +27,7 @@ int get_map_plan(sqlite3 *db,
             status = 1;
             goto end_map_plan;
         };
-
+        
         // If row doesn't have enough free space don't use it.
         if (remaining <= 0) {
             break;
@@ -37,7 +37,6 @@ int get_map_plan(sqlite3 *db,
         if (row.free_space <= 0) {
             continue;
         }
-
         remaining -= prepare_store_positions(f,
                                              row.free_locations,
                                              data_size - remaining,

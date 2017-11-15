@@ -75,6 +75,10 @@ void assert_equal_int64(char *test_case, uint64_t expected, uint64_t actual) {
 }
 
 void assert_equal_str(char *test_case, char *expected, char *actual) {
+    if (!actual || !expected) {
+      return;
+    }
+
     if (strcmp(expected, actual) == 0) {
         test_pass(test_case);
     } else {
