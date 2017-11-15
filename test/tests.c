@@ -1,9 +1,58 @@
 #include "tests.h"
 
 char *folder = NULL;
+FILE *data = NULL;
 char test_case[BUFSIZ];
 char expected[BUFSIZ];
 char actual[BUFSIZ];
+char *data_hash = NULL;
+
+int get_file_hash(int fd, char **hash) {
+    ssize_t read_len = 0;
+    uint8_t read_data[BUFSIZ];
+    uint8_t prehash_sha256[SHA256_DIGEST_SIZE];
+    uint8_t hash_as_hex[RIPEMD160_DIGEST_SIZE];
+
+    struct sha256_ctx sha256ctx;
+    sha256_init(&sha256ctx);
+
+    struct ripemd160_ctx ripemd160ctx;
+    ripemd160_init(&ripemd160ctx);
+
+    lseek(fd, 0, SEEK_SET);
+
+    do {
+        read_len = read(fd, read_data, BUFSIZ);
+
+        if (read_len == -1) {
+            printf("Error reading file for hashing\n");
+            return 1;
+        }
+
+        sha256_update(&sha256ctx, read_len, read_data);
+
+        memset(read_data, '\0', BUFSIZ);
+    } while (read_len > 0);
+
+    memset(prehash_sha256, '\0', SHA256_DIGEST_SIZE);
+    sha256_digest(&sha256ctx, SHA256_DIGEST_SIZE, prehash_sha256);
+
+    ripemd160_update(&ripemd160ctx, SHA256_DIGEST_SIZE, prehash_sha256);
+    memset(hash_as_hex, '\0', RIPEMD160_DIGEST_SIZE);
+    ripemd160_digest(&ripemd160ctx, RIPEMD160_DIGEST_SIZE, hash_as_hex);
+
+    size_t encode_len = BASE16_ENCODE_LENGTH(RIPEMD160_DIGEST_SIZE);
+    *hash = calloc(encode_len + 1, sizeof(uint8_t));
+    if (!*hash) {
+        printf("Error converting hash data to string\n");
+        return 1;
+    }
+
+    base16_encode_update((uint8_t *)*hash, RIPEMD160_DIGEST_SIZE, hash_as_hex);
+
+    return 0;
+}
+
 
 int get_count(sqlite3 *db, char *query) {
     int rc;
@@ -88,8 +137,8 @@ void test_initialize_mapstore() {
     mapstore_ctx ctx;
     mapstore_opts opts;
 
-    opts.allocation_size = 10737418240; // 10GB
-    opts.map_size = 2147483648;         // 2GB
+    opts.allocation_size = 25;
+    opts.map_size = 14;
     opts.path = folder;
 
     if (initialize_mapstore(&ctx, opts) != 0) {
@@ -112,7 +161,7 @@ void test_initialize_mapstore() {
     /* */
     memset(test_case, '\0', BUFSIZ);
     sprintf(test_case, "%s: Should set total_mapstores", __func__);
-    int expected_total_mapstores = 5;
+    int expected_total_mapstores = (opts.allocation_size / opts.map_size) + ((opts.allocation_size % opts.map_size > 0) ? 1 : 0);
     assert_equal_int64(test_case, expected_total_mapstores, ctx.total_mapstores);
 
     /* */
@@ -178,7 +227,7 @@ void test_initialize_mapstore() {
         memset(store_path, '\0', BUFSIZ);
         sprintf(store_path, "%s%d.map", ctx.mapstore_path, i);
         if (stat(store_path, &st) == 0) {
-            if ((i == ctx.total_mapstores && st.st_size == ctx.allocation_size % ctx.total_mapstores) ||
+            if ((i == ctx.total_mapstores && st.st_size == ctx.allocation_size % ctx.map_size) ||
                 st.st_size == ctx.map_size) {
                 count +=1;
             }
@@ -217,12 +266,108 @@ void test_initialize_mapstore() {
 }
 
 void test_store_data() {
+    sqlite3 *db = NULL; // Database
+    char store_path[BUFSIZ];
+    char query[BUFSIZ];
+
     memset(expected, '\0', BUFSIZ);
     memset(actual, '\0', BUFSIZ);
     memset(test_case, '\0', BUFSIZ);
 
+    sprintf(test_case, "%s: Should successfully initialize context", __func__);
+    mapstore_ctx ctx;
+    mapstore_opts opts;
+
+    opts.allocation_size = 512; // 10GB
+    opts.map_size = 128;         // 2GB
+    opts.path = folder;
+
+    if (initialize_mapstore(&ctx, opts) != 0) {
+        printf("Error initializing mapstore\n");
+        return;
+    }
+
+    /* Open Database */
+    if (sqlite3_open_v2(ctx.database_path, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK) {
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        test_fail(test_case, NULL, NULL);
+    }
+
+    memset(expected, '\0', BUFSIZ);
+    memset(actual, '\0', BUFSIZ);
+    memset(test_case, '\0', BUFSIZ);
     sprintf(test_case, "%s: Should successfully store data", __func__);
-    test_fail(test_case, NULL, NULL);
+
+    if ((store_data(&ctx, fileno(data), data_hash)) != 0) {
+        test_fail(test_case, NULL, NULL);
+    }
+
+    memset(test_case, '\0', BUFSIZ);
+    sprintf(test_case, "%s: Should insert data meta into database", __func__);
+    int count = 0;
+    memset(query, '\0', BUFSIZ);
+    sprintf(query, "SELECT count(*) FROM 'data_locations';");
+    count += get_count(db, query);
+    assert_equal_int64(test_case, 1, count);
+
+    data_locations_row row;
+    memset(test_case, '\0', BUFSIZ);
+    sprintf(test_case, "%s: Should insert hash into database", __func__);
+    get_data_locations_row(db, data_hash, &row);
+    assert_equal_str(test_case, data_hash, row.hash);
+
+    memset(test_case, '\0', BUFSIZ);
+    sprintf(test_case, "%s: Should mark data uploaded as true", __func__);
+    assert_equal_int64(test_case, true, row.uploaded);
+
+    memset(test_case, '\0', BUFSIZ);
+    sprintf(test_case, "%s: Should mark data size as 256", __func__);
+    assert_equal_int64(test_case, 256, row.size);
+
+    memset(test_case, '\0', BUFSIZ);
+    memset(expected, '\0', BUFSIZ);
+    sprintf(test_case, "%s: Should set positions in map store", __func__);
+    sprintf(expected, "{ \"1\": [ [ 0, 0, 127 ] ], \"2\": [ [ 128, 0, 127 ] ] }");
+    assert_equal_str(test_case, expected, (char *)json_object_to_json_string(row.positions));
+
+    char where[BUFSIZ];
+    mapstore_row store_row;
+    for (int i = 1; i <= ctx.total_mapstores; i++) {
+        memset(where, '\0', BUFSIZ);
+        sprintf(where, "WHERE Id='%d'", i);
+        get_store_rows(db, where, &store_row);
+
+        memset(expected, '\0', BUFSIZ);
+        if (i == 1 || i == 2) {
+            memset(test_case, '\0', BUFSIZ);
+            sprintf(test_case, "%s: Should update free_space for map %d", __func__, i);
+            assert_equal_int64(test_case, 0, store_row.free_space);
+
+            memset(test_case, '\0', BUFSIZ);
+            sprintf(test_case, "%s: Should update free_locations for map %d", __func__, i);
+            sprintf(expected, "[ ]");
+            assert_equal_str(test_case, expected, (char *)json_object_to_json_string(store_row.free_locations));
+        } else {
+            memset(test_case, '\0', BUFSIZ);
+            sprintf(test_case, "%s: Should update free_space for map %d", __func__, i);
+            assert_equal_int64(test_case, 128, store_row.free_space);
+
+            memset(test_case, '\0', BUFSIZ);
+            sprintf(test_case, "%s: Should update free_locations for map %d", __func__, i);
+            sprintf(expected, "[ [ 0, 127 ] ]");
+            assert_equal_str(test_case, expected, (char *)json_object_to_json_string(store_row.free_locations));
+        }
+    }
+
+    for (int i = 1; i <= ctx.total_mapstores; i++) {
+        memset(store_path, '\0', BUFSIZ);
+        sprintf(store_path, "%s%d.map", ctx.mapstore_path, i);
+        remove(store_path);
+    }
+    remove(ctx.database_path);
+    if (db) {
+        sqlite3_close(db);
+    }
 }
 
 void test_retrieve_data() {
@@ -273,6 +418,21 @@ int main(void)
         folder[strlen(folder)-1] = '\0';
     }
 
+    char *file_path = NULL;
+    asprintf(&file_path, "%stest.data", folder);
+    data = fopen(file_path, "w+");
+
+    time_t t;
+    srand((unsigned) time(&t));
+    for (int i = 0; i <= 256; i++) {
+        fseek(data, i, SEEK_SET);
+        fputc("ABCDEFGHIJKLMNOPQRSTUVWXYZ"[rand() % 26], data);
+    }
+
+    if ((get_file_hash(fileno(data), &data_hash)) != 0) {
+        test_fail(test_case, NULL, NULL);
+    }
+
     printf("Test Suite: API\n");
     test_initialize_mapstore();
     test_store_data();
@@ -290,5 +450,18 @@ int main(void)
     printf("\n");
 
     // End Tests
+    if (data) {
+        fclose(data);
+    }
+
+    if (file_path) {
+        remove(file_path);
+        free(file_path);
+    }
+
+    if (data_hash) {
+        free(data_hash);
+    }
+
     return test_results();
 }

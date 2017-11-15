@@ -180,6 +180,73 @@ end_mapstore_row:
     return status;
 }
 
+int get_data_locations_row(sqlite3 *db, char *hash, data_locations_row *row) {
+    int status = 0;
+    int rc;
+    char query[BUFSIZ];
+    char column_name[BUFSIZ];
+    sqlite3_stmt *stmt = NULL;
+
+    row->id = 0;
+    row->hash = NULL;
+    row->size = 0;
+    row->positions = NULL;
+    row->uploaded = false;
+
+    memset(query, '\0', BUFSIZ);
+    sprintf(query, "SELECT * FROM `data_locations` WHERE hash='%s' ORDER BY Id DESC LIMIT 1", hash);
+    if ((rc = sqlite3_prepare_v2(db, query, BUFSIZ, &stmt, 0)) != SQLITE_OK) {
+        fprintf(stderr, "sql error: %s\n", sqlite3_errmsg(db));
+        status = 1;
+        goto end_data_locations_row;
+    } else while((rc = sqlite3_step(stmt)) != SQLITE_DONE) {
+        switch(rc) {
+            case SQLITE_BUSY:
+                fprintf(stderr, "Database is busy\n");
+                sleep(1);
+                break;
+            case SQLITE_ERROR:
+                fprintf(stderr, "step error: %s\n", sqlite3_errmsg(db));
+                status = 1;
+                goto end_data_locations_row;
+            case SQLITE_ROW:
+                {
+                    int n = sqlite3_column_count(stmt);
+                    int i;
+                    for (i = 0; i < n; i++) {
+                        memset(column_name, '\0', BUFSIZ);
+                        strcpy(column_name, sqlite3_column_name(stmt, i));
+
+                        if (strcmp(column_name, "Id") == 0) {
+                            row->id = sqlite3_column_int64(stmt, i);
+                        }
+
+                        if (strcmp(column_name, "hash") == 0) {
+                            row->hash = strdup((const char *)sqlite3_column_text(stmt, i));
+                        }
+
+                        if (strcmp(column_name, "size") == 0) {
+                            row->size = sqlite3_column_int64(stmt, i);
+                        }
+
+                        if (strcmp(column_name, "positions") == 0) {
+                            row->positions = json_tokener_parse((const char *)sqlite3_column_text(stmt, i));
+                        }
+
+                        if (strcmp(column_name, "uploaded") == 0) {
+                            row->uploaded = (strcmp((const char *)sqlite3_column_text(stmt, i), "true") == 0) ? true : false;
+                        }
+                    }
+                }
+        }
+    }
+
+    sqlite3_finalize(stmt);
+
+end_data_locations_row:
+    return status;
+}
+
 int sum_column_for_table(sqlite3 *db, char *column, char *table, uint64_t *sum) {
     int status = 0;
     int rc;
