@@ -451,12 +451,14 @@ int main(void)
         folder[strlen(folder)-1] = '\0';
     }
 
-    char *file_path = NULL;
-    asprintf(&file_path, "%stest.data", folder);
+    char file_path[BUFSIZ];
+    memset(file_path, '\0', BUFSIZ);
+    sprintf(file_path, "%stest.data", folder);
     data = fopen(file_path, "w+");
 
-    char *file_path2 = NULL;
-    asprintf(&file_path2, "%stest.data", folder);
+    char file_path2[BUFSIZ];
+    memset(file_path2, '\0', BUFSIZ);
+    sprintf(file_path2, "%stest.data", folder);
     data2 = fopen(file_path2, "w+");
 
     time_t t;
@@ -498,16 +500,9 @@ int main(void)
         fclose(data2);
     }
 
-    if (file_path) {
-        remove(file_path);
-        free(file_path);
-    }
-
-    if (file_path2) {
-        remove(file_path2);
-        free(file_path2);
-    }
-
+    remove(file_path);
+    remove(file_path2);
+    
     if (data_hash) {
         free(data_hash);
     }
