@@ -286,8 +286,9 @@ int update_map_store(sqlite3 *db, char *where, char *set) {
     int status = 0;
     char *err_msg = NULL;
 
-    char *query = NULL;
-    asprintf(&query, "UPDATE `map_stores` %s %s LIMIT 1", set, where);
+    char query[BUFSIZ];
+    memset(query, '\0', BUFSIZ);
+    sprintf(query, "UPDATE `map_stores` %s %s LIMIT 1", set, where);
 
     printf("%s\n", query);
 
@@ -299,8 +300,6 @@ int update_map_store(sqlite3 *db, char *where, char *set) {
         status = 1;
     }
 
-    free(query);
-
     return status;
 }
 
@@ -308,8 +307,9 @@ int insert_to(sqlite3 *db, char *table, char *set) {
     int status = 0;
     char *err_msg = NULL;
 
-    char *query = NULL;
-    asprintf(&query, "INSERT INTO `%s` %s", table, set);
+    char query[BUFSIZ];
+    memset(query, '\0', BUFSIZ);
+    sprintf(query, "INSERT INTO `%s` %s", table, set);
 
     if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
         fprintf(stderr, "Failed to insert into %s\n", table);
@@ -317,8 +317,6 @@ int insert_to(sqlite3 *db, char *table, char *set) {
         sqlite3_free(err_msg);
         status = 1;
     }
-
-    free(query);
 
     return status;
 }
@@ -374,8 +372,9 @@ int mark_as_uploaded(sqlite3 *db, char *hash) {
     int status = 0;
     char *err_msg = NULL;
 
-    char *query = NULL;
-    asprintf(&query, "UPDATE `data_locations` SET uploaded='true' WHERE hash='%s'", hash);
+    char query[BUFSIZ];
+    memset(query, '\0', BUFSIZ);
+    sprintf(query, "UPDATE `data_locations` SET uploaded='true' WHERE hash='%s'", hash);
 
     if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
         fprintf(stderr, "Failed to update data_locations\n");
@@ -383,8 +382,6 @@ int mark_as_uploaded(sqlite3 *db, char *hash) {
         sqlite3_free(err_msg);
         status = 1;
     }
-
-    free(query);
 
     return status;
 }
@@ -439,8 +436,9 @@ int delete_by_hash_from_data_locations(sqlite3 *db, char *hash) {
     int status = 0;
     char *err_msg = NULL;
 
-    char *query = NULL;
-    asprintf(&query, "DELETE FROM `data_locations` WHERE hash='%s'", hash);
+    char query[BUFSIZ];
+    memset(query, '\0', BUFSIZ);
+    sprintf(query, "DELETE FROM `data_locations` WHERE hash='%s'", hash);
 
     if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
         fprintf(stderr, "Failed to delete hash from data_locations\n");
@@ -449,8 +447,6 @@ int delete_by_hash_from_data_locations(sqlite3 *db, char *hash) {
         status = 1;
     }
 
-    free(query);
-
     return status;
 }
 
@@ -458,8 +454,9 @@ int delete_by_id_from_map_stores(sqlite3 *db, uint64_t id) {
     int status = 0;
     char *err_msg = NULL;
 
-    char *query = NULL;
-    asprintf(&query, "DELETE FROM `map_stores` WHERE Id=%"PRIu64, id);
+    char query[BUFSIZ];
+    memset(query, '\0', BUFSIZ);
+    sprintf(query, "DELETE FROM `map_stores` WHERE Id=%"PRIu64, id);
 
     if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
         fprintf(stderr, "Failed to delete hash from map_stores\n");
@@ -467,8 +464,6 @@ int delete_by_id_from_map_stores(sqlite3 *db, uint64_t id) {
         sqlite3_free(err_msg);
         status = 1;
     }
-
-    free(query);
 
     return status;
 }

@@ -4,3 +4,4 @@
 #include <nettle/ripemd160.h>
 #include <nettle/sha.h>
 #include <nettle/base16.h>
+#include <time.h>

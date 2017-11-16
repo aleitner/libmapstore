@@ -57,19 +57,18 @@ int test_results() {
 }
 
 void assert_equal_int64(char *test_case, uint64_t expected, uint64_t actual) {
-    char *actual_str = NULL;
-    char *expected_str = NULL;
+    char actual_str[BUFSIZ];
+    char expected_str[BUFSIZ];
 
     if (expected == actual) {
         test_pass(test_case);
     } else {
-        asprintf(&actual_str, "%"PRIu64, actual);
-        asprintf(&expected_str, "%"PRIu64, expected);
+        memset(expected_str, '\0', BUFSIZ);
+        memset(actual_str, '\0', BUFSIZ);
+        sprintf(actual_str, "%"PRIu64, actual);
+        sprintf(expected_str, "%"PRIu64, expected);
         test_fail(test_case, expected_str, actual_str);
     }
-
-    free(actual_str);
-    free(expected_str);
 
     return;
 }
