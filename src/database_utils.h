@@ -46,7 +46,7 @@ typedef struct  {
   uint64_t map_size;
 } mapstore_layout_row;
 
-int prepare_tables(char *database_path);
+int prepare_tables(sqlite3 *db);
 int get_latest_layout_row(sqlite3 *db, mapstore_layout_row *row);
 int get_store_rows(sqlite3 *db, char *where, mapstore_row *row);
 int get_data_locations_row(sqlite3 *db, char *hash, data_locations_row *row);

@@ -27,7 +27,7 @@ int get_map_plan(sqlite3 *db,
             status = 1;
             goto end_map_plan;
         };
-        
+
         // If row doesn't have enough free space don't use it.
         if (remaining <= 0) {
             break;
@@ -62,16 +62,9 @@ int map_files(mapstore_ctx *ctx) {
 
     char mapstore_path[BUFSIZ];         // Path to map_store
     char query[BUFSIZ];                 // SQL query
-    sqlite3 *db = NULL;                 // Database
+    sqlite3 *db = ctx->db;                 // Database
     char *err_msg = NULL;               // error from sqlite3_exec
     json_object *json_positions = NULL; // Positions of free space
-
-    /* Open Database */
-    if (sqlite3_open_v2(ctx->database_path, &db, SQLITE_OPEN_READWRITE, NULL) != SQLITE_OK) {
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
-        status = 1;
-        goto end_map_files;
-    }
 
     /* get previous layout for comparing size changes */
     mapstore_layout_row previous_layout;
@@ -169,10 +162,6 @@ int map_files(mapstore_ctx *ctx) {
     }
 
 end_map_files:
-    if (db) {
-        sqlite3_close(db);
-    }
-
     return status;
 }
 

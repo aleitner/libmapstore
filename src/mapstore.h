@@ -42,6 +42,7 @@ typedef struct  {
   uint64_t total_mapstores;
   char *mapstore_path;
   char *database_path;
+  sqlite3 *db;
 } mapstore_ctx;
 
 typedef struct  {

@@ -1,15 +1,8 @@
 #include "database_utils.h"
 
-int prepare_tables(char *database_path) {
+int prepare_tables(sqlite3 *db) {
     int status = 0;
     char *err_msg = NULL;
-    sqlite3 *db = NULL;
-
-    if (sqlite3_open_v2(database_path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL) != SQLITE_OK) {
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
-        status = 1;
-        goto end_prepare_tables;
-    }
 
     char *data_locations_table = "CREATE TABLE IF NOT EXISTS `data_locations` ( "
         "`Id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, "
@@ -54,10 +47,6 @@ int prepare_tables(char *database_path) {
     }
 
 end_prepare_tables:
-    if (db) {
-        sqlite3_close(db);
-    }
-
     return status;
 }
 

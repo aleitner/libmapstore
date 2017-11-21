@@ -5,6 +5,8 @@
 */
 MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts) {
     int status = 0;
+    sqlite3 *db = NULL;
+    ctx->db = NULL;
 
     /* Initialized path variables */
     ctx->mapstore_path = NULL;
@@ -50,8 +52,20 @@ MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts) {
     ctx->database_path = calloc(strlen(base_path) + 15, sizeof(char));
     sprintf(ctx->database_path, "%s%cshards.sqlite", base_path, separator());
 
+    if (sqlite3_open_v2(
+        ctx->database_path,
+        &db,
+        SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_SHAREDCACHE,
+        NULL) != SQLITE_OK) {
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        status = 1;
+        goto end_initalize;
+    }
+
+    ctx->db = db;
+
     /* Prepare mapstore tables */
-    if (prepare_tables(ctx->database_path) != 0) {
+    if (prepare_tables(db) != 0) {
         fprintf(stderr, "Could not create tables\n");
         status = 1;
         goto end_initalize;
@@ -88,7 +102,6 @@ end_initalize:
 MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, char *hash) {
     int status = 0;
     json_object *map_plan = json_object_new_object();
-    sqlite3 *db = NULL;
     char where[BUFSIZ];
     char set[BUFSIZ];
     json_object *free_pos_obj = NULL;
@@ -96,13 +109,7 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, char *hash) {
     json_object *used_space_obj = NULL;
     json_object *all_data_locations = json_object_new_object();
 
-    if (sqlite3_open_v2(ctx->database_path, &db, SQLITE_OPEN_READWRITE, NULL) != SQLITE_OK) {
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
-        status = 1;
-        goto end_store_data;
-    }
-
-    if((status = hash_exists_in_mapstore(db, hash)) != 0) {
+    if((status = hash_exists_in_mapstore(ctx->db, hash)) != 0) {
         fprintf(stderr, "Hash already exists in mapstore\n");
         status = 1;
         goto end_store_data;
@@ -115,7 +122,7 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, char *hash) {
     }
 
     // Determine space available
-    if((status = get_map_plan(db, ctx->total_mapstores, data_size, map_plan)) != 0) {
+    if((status = get_map_plan(ctx->db, ctx->total_mapstores, data_size, map_plan)) != 0) {
         status = 1;
         goto end_store_data;
     }
@@ -133,7 +140,7 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, char *hash) {
                 json_object_get_int64(used_space_obj),
                 json_object_to_json_string(free_pos_obj));
 
-        if((status = update_map_store(db, where, set)) != 0) {
+        if((status = update_map_store(ctx->db, where, set)) != 0) {
             status = 1;
             goto end_store_data;
         }
@@ -150,7 +157,7 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, char *hash) {
             json_object_to_json_string(all_data_locations));
 
     char *table = "data_locations";
-    if((status = insert_to(db, table, set)) != 0) {
+    if((status = insert_to(ctx->db, table, set)) != 0) {
         status = 1;
         goto end_store_data;
     }
@@ -162,7 +169,7 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, char *hash) {
     }
 
     // Set uploaded to true in data_locations
-    if((status = mark_as_uploaded(db, hash)) != 0) {
+    if((status = mark_as_uploaded(ctx->db, hash)) != 0) {
         status = 1;
         goto end_store_data;
     }
@@ -171,11 +178,6 @@ end_store_data:
     if (map_plan) {
         json_object_put(map_plan);
     }
-
-    if (db) {
-        sqlite3_close(db);
-    }
-
     return status;
 }
 
@@ -184,18 +186,10 @@ end_store_data:
 */
 MAPSTORE_API int retrieve_data(mapstore_ctx *ctx, int fd, char *hash) {
     int status = 0;
-    sqlite3 *db = NULL;                 // Database
     json_object *positions = NULL;
 
-    /* Open Database */
-    if (sqlite3_open_v2(ctx->database_path, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK) {
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
-        status = 1;
-        goto end_retrieve_data;
-    }
-
     // get data map
-    if ((status = get_pos_from_data_locations(db, hash, &positions)) != 0) {
+    if ((status = get_pos_from_data_locations(ctx->db, hash, &positions)) != 0) {
         fprintf(stderr, "Failed to get positions from data_locations table\n");
         status = 1;
         goto end_retrieve_data;
@@ -209,10 +203,6 @@ MAPSTORE_API int retrieve_data(mapstore_ctx *ctx, int fd, char *hash) {
     }
 
 end_retrieve_data:
-    if (db) {
-        sqlite3_close(db);
-    }
-
     if (positions) {
         json_object_put(positions);
     }
@@ -224,7 +214,6 @@ end_retrieve_data:
 */
 MAPSTORE_API int delete_data(mapstore_ctx *ctx, char *hash) {
     int status = 0;
-    sqlite3 *db = NULL;                 // Database
     json_object *positions = NULL;
     json_object *updated_positions = NULL;
     json_object *free_pos_obj = NULL;
@@ -232,22 +221,15 @@ MAPSTORE_API int delete_data(mapstore_ctx *ctx, char *hash) {
     char where[BUFSIZ];
     char set[BUFSIZ];
 
-    /* Open Database */
-    if (sqlite3_open_v2(ctx->database_path, &db, SQLITE_OPEN_READWRITE, NULL) != SQLITE_OK) {
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
-        status = 1;
-        goto end_delete_data;
-    }
-
     // get data map
-    if ((status = get_pos_from_data_locations(db, hash, &positions)) != 0) {
+    if ((status = get_pos_from_data_locations(ctx->db, hash, &positions)) != 0) {
         fprintf(stderr, "Failed to get positions from data_locations table\n");
         status = 1;
         goto end_delete_data;
     }
 
     // add each location to map_stores table free_locations
-    if ((status = get_updated_free_locations(db, positions, &updated_positions)) != 0) {
+    if ((status = get_updated_free_locations(ctx->db, positions, &updated_positions)) != 0) {
         status = 1;
         goto end_delete_data;
     };
@@ -264,24 +246,19 @@ MAPSTORE_API int delete_data(mapstore_ctx *ctx, char *hash) {
                 json_object_get_int64(free_space_obj),
                 json_object_to_json_string(free_pos_obj));
 
-        if((status = update_map_store(db, where, set)) != 0) {
+        if((status = update_map_store(ctx->db, where, set)) != 0) {
             status = 1;
             goto end_delete_data;
         }
     }
 
     // Delete data_locations row by hash
-    if((status = delete_by_hash_from_data_locations(db, hash)) != 0) {
+    if((status = delete_by_hash_from_data_locations(ctx->db, hash)) != 0) {
         status = 1;
         goto end_delete_data;
     }
-    // Empty mapstore positions
 
 end_delete_data:
-    if (db) {
-        sqlite3_close(db);
-    }
-
     if (positions) {
         json_object_put(positions);
     }
