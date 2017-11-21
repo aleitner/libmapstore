@@ -55,7 +55,7 @@ MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts) {
     if (sqlite3_open_v2(
         ctx->database_path,
         &db,
-        SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_SHAREDCACHE,
+        SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
         NULL) != SQLITE_OK) {
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
         status = 1;
@@ -65,7 +65,7 @@ MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts) {
     ctx->db = db;
 
     /* Prepare mapstore tables */
-    if (prepare_tables(db) != 0) {
+    if (prepare_tables(ctx->db) != 0) {
         fprintf(stderr, "Could not create tables\n");
         status = 1;
         goto end_initalize;
