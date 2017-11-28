@@ -26,10 +26,14 @@ int main (int argc, char **argv)
     int index = 0;
     int ret = 0; // Variable for checking function return codes
     char *mapstore_path = NULL;
+    uint64_t allocation_size = 0;
+    uint64_t map_size = 0;
 
     static struct option cmd_options[] = {
         {"version", no_argument,  0, 'v'},
         {"log", required_argument,  0, 'l'},
+        {"alloc", required_argument,  0, 'a'},
+        {"map", required_argument,  0, 'm'},
         {"path", required_argument,  0, 'p'},
         {"debug", no_argument,  0, 'd'},
         {"help", no_argument,  0, 'h'},
@@ -43,6 +47,12 @@ int main (int argc, char **argv)
         switch (c) {
             case 'l':
                 log_level = atoi(optarg);
+                break;
+            case 'm':
+                map_size = strtoull(optarg, NULL, 10);
+                break;
+            case 'a':
+                allocation_size = strtoull(optarg, NULL, 10);
                 break;
             case 'd':
                 log_level = 4;
@@ -83,14 +93,15 @@ int main (int argc, char **argv)
     mapstore_ctx ctx;
     mapstore_opts opts;
 
-    opts.allocation_size = 10737418240; // 10GB
-    opts.map_size = 2147483648;         // 2GB
+    opts.allocation_size = (allocation_size > 0) ? allocation_size : 10737418240; // 10GB
+    opts.map_size = (map_size > 0) ? map_size : 2147483648;         // 2GB
     opts.path = (mapstore_path != NULL) ? strdup(mapstore_path) : NULL;
 
     if (initialize_mapstore(&ctx, opts) != 0) {
         printf("Error initializing mapstore\n");
         return 1;
     }
+    printf("Initialized Map_store");
 
     /**
      * Store File

@@ -55,42 +55,6 @@ int get_file_hash(int fd, char **hash) {
     return 0;
 }
 
-
-int get_count(sqlite3 *db, char *query) {
-    int rc;
-    char column_name[BUFSIZ];
-    sqlite3_stmt *stmt = NULL;
-
-    if ((rc = sqlite3_prepare_v2(db, query, BUFSIZ, &stmt, 0)) != SQLITE_OK) {
-        fprintf(stderr, "sql error: %s\n", sqlite3_errmsg(db));
-    } else while((rc = sqlite3_step(stmt)) != SQLITE_DONE) {
-        switch(rc) {
-            case SQLITE_BUSY:
-                fprintf(stderr, "Database is busy\n");
-                sleep(1);
-                break;
-            case SQLITE_ERROR:
-                fprintf(stderr, "step error: %s\n", sqlite3_errmsg(db));
-                return 0;
-            case SQLITE_ROW:
-                {
-                    int n = sqlite3_column_count(stmt);
-                    int i;
-                    for (i = 0; i < n; i++) {
-                        memset(column_name, '\0', BUFSIZ);
-                        strcpy(column_name, sqlite3_column_name(stmt, i));
-
-                        if (strcmp(column_name, "count(*)") == 0) {
-                            return sqlite3_column_int64(stmt, i);
-                        }
-                    }
-                }
-        }
-    }
-
-    return 0;
-}
-
 void test_json_free_space_array() {
     json_object *jarray = NULL;
 
@@ -295,8 +259,6 @@ void test_store_data() {
     if ((store_data(&ctx, fileno(data), data_hash)) != 0) {
         test_fail(test_case, NULL, NULL);
     }
-
-    // sqlite3_close(ctx.db);
 
     /* Open Database */
     if (sqlite3_open_v2(ctx.database_path, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK) {

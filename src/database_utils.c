@@ -456,3 +456,38 @@ int delete_by_id_from_map_stores(sqlite3 *db, uint64_t id) {
 
     return status;
 }
+
+int get_count(sqlite3 *db, char *query) {
+    int rc;
+    char column_name[BUFSIZ];
+    sqlite3_stmt *stmt = NULL;
+
+    if ((rc = sqlite3_prepare_v2(db, query, BUFSIZ, &stmt, 0)) != SQLITE_OK) {
+        fprintf(stderr, "sql error: %s\n", sqlite3_errmsg(db));
+    } else while((rc = sqlite3_step(stmt)) != SQLITE_DONE) {
+        switch(rc) {
+            case SQLITE_BUSY:
+                fprintf(stderr, "Database is busy\n");
+                sleep(1);
+                break;
+            case SQLITE_ERROR:
+                fprintf(stderr, "step error: %s\n", sqlite3_errmsg(db));
+                return 0;
+            case SQLITE_ROW:
+                {
+                    int n = sqlite3_column_count(stmt);
+                    int i;
+                    for (i = 0; i < n; i++) {
+                        memset(column_name, '\0', BUFSIZ);
+                        strcpy(column_name, sqlite3_column_name(stmt, i));
+
+                        if (strcmp(column_name, "count(*)") == 0) {
+                            return sqlite3_column_int64(stmt, i);
+                        }
+                    }
+                }
+        }
+    }
+
+    return 0;
+}
