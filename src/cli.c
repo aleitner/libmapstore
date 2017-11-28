@@ -101,8 +101,7 @@ int main (int argc, char **argv)
         printf("Error initializing mapstore\n");
         return 1;
     }
-    printf("Initialized Map_store");
-
+    
     /**
      * Store File
      */

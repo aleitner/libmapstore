@@ -42,13 +42,6 @@ MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts) {
     ctx->mapstore_path = calloc(strlen(base_path) + 9, sizeof(char));
     sprintf(ctx->mapstore_path, "%s%cshards%c", base_path, separator(), separator());
 
-    /* Create map store folder */
-    if (create_directory(ctx->mapstore_path) != 0) {
-        fprintf(stderr, "Could not create folder: %s\n", ctx->mapstore_path);
-        status = 1;
-        goto end_initalize;
-    };
-
     ctx->database_path = calloc(strlen(base_path) + 15, sizeof(char));
     sprintf(ctx->database_path, "%s%cshards.sqlite", base_path, separator());
 
@@ -66,6 +59,13 @@ MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts) {
 
     /* All variables have been initialized for the ctx by now */
 
+    /* Create map store folder */
+    if (create_directory(ctx->mapstore_path) != 0) {
+        fprintf(stderr, "Could not create folder: %s\n", ctx->mapstore_path);
+        status = 1;
+        goto end_initalize;
+    };
+
     /* Prepare mapstore tables */
     if (prepare_tables(ctx->db) != 0) {
         fprintf(stderr, "Could not create tables\n");
@@ -79,10 +79,24 @@ MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts) {
         goto end_initalize;
     };
 
+    if (previous_layout.allocation_size != 0 &&
+        previous_layout.map_size != 0 &&
+        (previous_layout.map_size != ctx->map_size ||
+        previous_layout.allocation_size != ctx->allocation_size)) {
+        fprintf(stdout, "Cannot create mapstore of different values on top of current store\n");
+        status = 1;
+        goto end_initalize;
+    }
+
+    if (previous_layout.map_size == ctx->map_size &&
+        previous_layout.allocation_size == ctx->allocation_size) {
+        fprintf(stdout, "Map store already created\n");
+        goto end_initalize;
+    }
+
     char mapstore_path[BUFSIZ];         // Path to map_store
     char query[BUFSIZ];                 // SQL query
     char *err_msg = NULL;               // error from sqlite3_exec
-    json_object *json_positions = NULL; // Positions of free space
 
     /* Insert table layout. We keep track of the change over time so no need to delete old rows */
     memset(query, '\0', BUFSIZ);
@@ -91,99 +105,64 @@ MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts) {
             ctx->map_size,
             ctx->allocation_size);
 
-    char *mapstore_layout = "mapstore_layout";
-    if (insert_to(db, mapstore_layout, query) != 0) {
+    if (insert_to(db, "mapstore_layout", query) != 0) {
         status = 1;
         goto end_initalize;
     }
 
     /* Update database to know metadata about each mmap file */
-    mapstore_row row;       // Previous Mapstore information
-    uint64_t map_size;      // Size of mapstore allocation
-    uint64_t free_space;    // Free space for mapstore
     uint64_t id;            // Mapstore Id
 
     for (uint64_t f = 1; f <= ctx->total_mapstores; f++) {
-
-        /* Check if mapstore already exists */
-        char where[BUFSIZ];
-        memset(where, '\0', BUFSIZ);
-        sprintf(where, "WHERE Id = %"PRIu64, f);
-        if (get_store_rows(db, where, &row) != 0) {
-            status = 1;
-            goto end_initalize;
-        };
-
-        // Adjust new map sizes and free space if larger allocations
-        if (ctx->allocation_size > previous_layout.allocation_size && row.size < ctx->map_size) {
-            if (f > dv) {
-                map_size = rm; // Last store might be smaller than the rest
-                free_space = rm - row.size + row.free_space;
-            } else {
-                map_size = ctx->map_size;
-                free_space = ctx->map_size - row.size + row.free_space;
-            }
-        } else {
-            continue;
-        }
-
-        /* Delete old data if new data is coming in*/
-        if (row.free_locations) {
-            memset(query, '\0', BUFSIZ);
-            sprintf(query, "DELETE from map_stores WHERE Id=%"PRIu64";", f);
-            if (delete_by_id_from_map_stores(db, f) != 0) {
-                status = 1;
-                goto end_initalize;
-            }
-        }
-
         /* Insert new data */
         memset(query, '\0', BUFSIZ);
-        json_positions = expand_free_space_list(row.free_locations, row.size, map_size);
         sprintf(query,
-                "VALUES(%"PRIu64", '%s', %"PRIu64", %"PRIu64")",
+                "VALUES(%"PRIu64", '[[ 0, %"PRIu64" ]]', %"PRIu64", %"PRIu64")",
                 f,
-                json_object_to_json_string(json_positions),
-                free_space,
-                map_size);
+                ctx->map_size - 1,
+                ctx->map_size,
+                ctx->map_size);
 
-        json_object_put(json_positions);
-
-        char *map_stores = "map_stores";
-        if (insert_to(db, map_stores, query) != 0) {
+        if (insert_to(db, "map_stores", query) != 0) {
             status = 1;
             goto end_initalize;
         }
 
         // Create map file
-        // Only increase map size. Never decrease.
-        if (ctx->allocation_size > previous_layout.allocation_size && row.size < map_size) {
-            memset(mapstore_path, '\0', BUFSIZ);
-            sprintf(mapstore_path, "%s%"PRIu64".map", ctx->mapstore_path, f);
-            if (create_map_store(mapstore_path, map_size) != 0) {
-                fprintf(stderr,
-                    "Failed to create mapped file: %s of size %"PRIu64,
-                    ctx->mapstore_path,
-                    map_size);
-
-                status = 1;
-                goto end_initalize;
-            };
-        }
-    }
-
-    // Make sure we have stores
-    struct stat st;
-    for (uint64_t store = 1; store <= ctx->total_mapstores; store++) {
         memset(mapstore_path, '\0', BUFSIZ);
-        sprintf(mapstore_path, "%s%"PRIu64".map", ctx->mapstore_path, store);
-        if (stat(mapstore_path, &st) != 0) {
+        sprintf(mapstore_path, "%s%"PRIu64".map", ctx->mapstore_path, f);
+        if (create_map_store(mapstore_path, ctx->map_size) != 0) {
+            fprintf(stderr,
+                "Failed to create mapped file: %s of size %"PRIu64,
+                ctx->mapstore_path,
+                ctx->map_size);
+
             status = 1;
             goto end_initalize;
-        }
+        };
+
     }
 
 end_initalize:
+    if (status == 1) {
+        // Make sure we have stores
+        struct stat st;
+        for (uint64_t store = 1; store <= ctx->total_mapstores; store++) {
+            memset(mapstore_path, '\0', BUFSIZ);
+            sprintf(mapstore_path, "%s%"PRIu64".map", ctx->mapstore_path, store);
+            if (stat(mapstore_path, &st) != 0) {
+                fprintf(stderr, "Map stores not created");
+                status = 1;
+                break;
+            }
+        }
+
+        if (stat(ctx->database_path, &st) != 0) {
+            fprintf(stderr, "Database was not created");
+            status = 1;
+        }
+    }
+
 
     if (base_path) {
         free(base_path);
@@ -262,8 +241,7 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, char *hash) {
             data_size,
             json_object_to_json_string(all_data_locations));
 
-    char *table = "data_locations";
-    if((status = insert_to(ctx->db, table, set)) != 0) {
+    if((status = insert_to(ctx->db, "data_locations", set)) != 0) {
         status = 1;
         goto end_store_data;
     }
