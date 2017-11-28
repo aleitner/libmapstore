@@ -255,16 +255,16 @@ int create_map_store(char *path, uint64_t size) {
     uint8_t *mmap_store = NULL;         // Memory Mapped map_store
     FILE *fmap_store = fopen(path, "wb");
 
-    printf("Path: %s, size: %"PRIu64"\n", path, size);
+    fprintf(stdout, "Created mapstore: %s, size: %"PRIu64"\n", path, size);
 
-    int falloc_status = allocatefile(fileno(fmap_store), size);
-
-    if (falloc_status) {
-        status = 1;
-        fprintf(stdout, "Could not allocate space for mmap parity " \
-                         "shard file: %i", falloc_status);
-        goto create_map_store;
-    }
+    // int falloc_status = allocatefile(fileno(fmap_store), size);
+    //
+    // if (falloc_status) {
+    //     status = 1;
+    //     fprintf(stdout, "Could not allocate space for mmap parity " \
+    //                      "shard file: %i", falloc_status);
+    //     goto create_map_store;
+    // }
 
 create_map_store:
     if (fmap_store) {
