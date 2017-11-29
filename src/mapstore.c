@@ -376,12 +376,20 @@ MAPSTORE_API int get_data_info(mapstore_ctx *ctx, char *hash, data_info *info) {
 }
 
 MAPSTORE_API int get_store_info(mapstore_ctx *ctx, store_info *info) {
+    int status = 0;
     uint64_t free_space = 0;
     uint64_t used_space = 0;
     uint64_t data_count = 0;
 
-    sum_column_for_table(ctx->db, "free_space", "map_stores", &free_space);
-    sum_column_for_table(ctx->db, "size", "data_locations", &used_space);
+    if (sum_column_for_table(ctx->db, "free_space", "map_stores", &free_space) != 0) {
+        status = 1;
+        goto end_get_store_info;
+    }
+
+    if (sum_column_for_table(ctx->db, "size", "data_locations", &used_space) != 0) {
+        status = 1;
+        goto end_get_store_info;
+    }
 
     char *query = "SELECT count(*) FROM 'data_locations';";
     data_count = get_count(ctx->db, query);
@@ -393,5 +401,6 @@ MAPSTORE_API int get_store_info(mapstore_ctx *ctx, store_info *info) {
     info->total_mapstores = ctx->total_mapstores;
     info->data_count = data_count;
 
-    return 0;
+end_get_store_info:
+    return status;
 }
