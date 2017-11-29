@@ -90,7 +90,7 @@ MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts) {
 
     if (previous_layout.map_size == ctx->map_size &&
         previous_layout.allocation_size == ctx->allocation_size) {
-        fprintf(stdout, "Map store already created\n");
+        // fprintf(stdout, "Map store already created\n");
         goto end_initalize;
     }
 
@@ -111,8 +111,6 @@ MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts) {
     }
 
     /* Update database to know metadata about each mmap file */
-    uint64_t id;            // Mapstore Id
-
     for (uint64_t f = 1; f <= ctx->total_mapstores; f++) {
         /* Insert new data */
         memset(query, '\0', BUFSIZ);
@@ -151,7 +149,7 @@ end_initalize:
             memset(mapstore_path, '\0', BUFSIZ);
             sprintf(mapstore_path, "%s%"PRIu64".map", ctx->mapstore_path, store);
             if (stat(mapstore_path, &st) != 0) {
-                fprintf(stderr, "Map stores not created");
+                fprintf(stderr, "Map stores not created\n");
                 status = 1;
                 break;
             }
@@ -349,10 +347,51 @@ end_delete_data:
     return status;
 }
 
-MAPSTORE_API data_info *get_data_info(mapstore_ctx *ctx, char *hash) {
-    fprintf(stdout, "I'm here!");
+MAPSTORE_API int restructure(mapstore_ctx *ctx, uint64_t map_size, uint64_t alloc_size) {
+    int status = 0;
+
+    // Validate values
+    // create new context
+    // for each value in data_locations
+    //   retrieve_data from old CTX
+    //   store data in new ctx
+end_restructure:
+    return status;
 }
 
-MAPSTORE_API store_info *get_store_info(mapstore_ctx *ctx) {
-    fprintf(stdout, "I'm here!");;
+MAPSTORE_API int get_data_info(mapstore_ctx *ctx, char *hash, data_info *info) {
+    data_locations_row row;
+    if (get_data_locations_row(ctx->db, hash, &row) != 0) {
+        return 1;
+    };
+
+    if (row.hash == NULL) {
+        return 1;
+    }
+
+    info->hash = strdup(row.hash);
+    info->size = row.size;
+
+    return 0;
+}
+
+MAPSTORE_API int get_store_info(mapstore_ctx *ctx, store_info *info) {
+    uint64_t free_space = 0;
+    uint64_t used_space = 0;
+    uint64_t data_count = 0;
+
+    sum_column_for_table(ctx->db, "free_space", "map_stores", &free_space);
+    sum_column_for_table(ctx->db, "size", "data_locations", &used_space);
+
+    char *query = "SELECT count(*) FROM 'data_locations';";
+    data_count = get_count(ctx->db, query);
+
+    info->free_space = free_space;
+    info->used_space = used_space;
+    info->allocation_size = ctx->allocation_size;
+    info->map_size = ctx->map_size;
+    info->total_mapstores = ctx->total_mapstores;
+    info->data_count = data_count;
+
+    return 0;
 }

@@ -101,7 +101,7 @@ int main (int argc, char **argv)
         printf("Error initializing mapstore\n");
         return 1;
     }
-    
+
     /**
      * Store File
      */
@@ -218,13 +218,39 @@ end_delete:
     }
 
     if (strcmp(command, "get-data-info") == 0) {
-        printf("Getting data info\n\n");
-        return 0;
+        char *data_hash = argv[command_index + 1];
+
+        data_info info;
+        if ((status = get_data_info(&ctx, data_hash, &info)) == 0) {
+            printf("{ \"hash\": \"%s\", \"size\": %"PRIu64" }\n", info.hash, info.size);
+        } else {
+            printf("Hash %s does not exist in store.\n", data_hash);
+        }
+
+        return status;
     }
 
     if (strcmp(command, "get-store-info") == 0) {
-        printf("Getting store info\n\n");
-        return 0;
+        store_info info;
+        if ((status = get_store_info(&ctx, &info)) == 0) {
+            printf("{ \"free_space\": %"PRIu64", "    \
+                    "\"used_space\": %"PRIu64", "     \
+                    "\"allocation_size\": %"PRIu64", "\
+                    "\"map_size\": %"PRIu64", "       \
+                    "\"data_count\": %"PRIu64", "     \
+                    "\"total_stores\": %"PRIu64" "    \
+                    "}\n",                            \
+                    info.free_space,
+                    info.used_space,
+                    info.allocation_size,
+                    info.map_size,
+                    info.data_count,
+                    info.total_mapstores);
+        } else {
+            printf("Failed.\n");
+        }
+
+        return status;
     }
 
     return status;
