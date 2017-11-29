@@ -81,10 +81,46 @@ Example:
 int store_data(mapstore_ctx *ctx, int fd, char *hash);
 ```
 
+Example:
+```C
+  mapstore_ctx ctx;
+  mapstore_opts opts;
+  char *data_hash = "A1B2C3D4E5F6";
+  File *data_file = stdin;
+
+  if (initialize_mapstore(&ctx, NULL) != 0) {
+      printf("Error initializing mapstore\n");
+      return 1;
+  }
+
+  if (store_data(&ctx, fileno(data_file), data_hash) != 0) {
+      printf("Failed to store data: %s\n", data_hash);
+      return 1;
+  }
+```
+
 #### Retrieve Data
 
 ```C
 int retrieve_data(mapstore_ctx *ctx, int fd, char *hash);
+```
+
+Example:
+```C
+  mapstore_ctx ctx;
+  mapstore_opts opts;
+  char *data_hash = "A1B2C3D4E5F6";
+  File *retrieval_file = stdout;
+
+  if (initialize_mapstore(&ctx, NULL) != 0) {
+      printf("Error initializing mapstore\n");
+      return 1;
+  }
+
+  if (retrieve_data(&ctx, fileno(retrieval_file), data_hash) != 0) {
+      printf("Failed to retrieve data: %s\n", data_hash);
+      return 1;
+  }
 ```
 
 #### Delete Data
@@ -93,15 +129,75 @@ int retrieve_data(mapstore_ctx *ctx, int fd, char *hash);
 int delete_data(mapstore_ctx *ctx, char *hash);
 ```
 
+Example:
+```C
+  mapstore_ctx ctx;
+  mapstore_opts opts;
+  char *data_hash = "A1B2C3D4E5F6";
+
+  if (initialize_mapstore(&ctx, NULL) != 0) {
+      printf("Error initializing mapstore\n");
+      return 1;
+  }
+
+  if (delete_data(&ctx, data_hash) != 0) {
+      printf("Failed to delete data: %s\n", data_hash);
+      return 1;
+  }
+```
+
 #### Get Map Store Metadata
 
 ```C
-store_info *get_store_info(mapstore_ctx *ctx);
+int get_store_info(mapstore_ctx *ctx, store_info *info);
+```
+
+Example:
+```C
+  mapstore_ctx ctx;
+  mapstore_opts opts;
+  store_info info;
+
+  if ((status = get_store_info(&ctx, &info)) == 0) {
+      printf("{ \"free_space\": %"PRIu64", "    \
+              "\"used_space\": %"PRIu64", "     \
+              "\"allocation_size\": %"PRIu64", "\
+              "\"map_size\": %"PRIu64", "       \
+              "\"data_count\": %"PRIu64", "     \
+              "\"total_stores\": %"PRIu64" "    \
+              "}\n",                            \
+              info.free_space,
+              info.used_space,
+              info.allocation_size,
+              info.map_size,
+              info.data_count,
+              info.total_mapstores);
+  } else {
+      printf("Failed to get store info.\n");
+      return 1;
+  }
+
+
 ```
 
 #### Get Stored Data's Metadata
 ```C
-data_info *get_data_info(mapstore_ctx *ctx, char *hash);
+int get_data_info(mapstore_ctx *ctx, char *hash, data_info *info);
+```
+
+Example:
+```C
+  mapstore_ctx ctx;
+  mapstore_opts opts;
+  char *data_hash = "A1B2C3D4E5F6";
+  data_info info;
+
+  if (get_data_info(&ctx, data_hash, &info) == 0) {
+      printf("{ \"hash\": \"%s\", \"size\": %"PRIu64" }\n", info.hash, info.size);
+  } else {
+      printf("Hash %s does not exist in store.\n", data_hash);
+      return 1;
+  }
 ```
 
 ### STRUCTS
@@ -125,6 +221,20 @@ typedef struct  {
   uint64_t used_space;
   uint64_t allocation_size;
   uint64_t map_size;
+} store_info;
+
+typedef struct  {
+  char *hash;
+  uint64_t size;
+} data_info;
+
+typedef struct  {
+  uint64_t free_space;
+  uint64_t used_space;
+  uint64_t allocation_size;
+  uint64_t map_size;
+  uint64_t data_count;
+  uint64_t total_mapstores;
 } store_info;
 ```
 

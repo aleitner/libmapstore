@@ -247,7 +247,7 @@ end_delete:
                     info.data_count,
                     info.total_mapstores);
         } else {
-            printf("Failed.\n");
+            printf("Failed to get store info.\n");
         }
 
         return status;
