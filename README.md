@@ -84,7 +84,6 @@ int store_data(mapstore_ctx *ctx, int fd, char *hash);
 Example:
 ```C
   mapstore_ctx ctx;
-  mapstore_opts opts;
   char *data_hash = "A1B2C3D4E5F6";
   File *data_file = stdin;
 
@@ -108,7 +107,6 @@ int retrieve_data(mapstore_ctx *ctx, int fd, char *hash);
 Example:
 ```C
   mapstore_ctx ctx;
-  mapstore_opts opts;
   char *data_hash = "A1B2C3D4E5F6";
   File *retrieval_file = stdout;
 
@@ -132,7 +130,6 @@ int delete_data(mapstore_ctx *ctx, char *hash);
 Example:
 ```C
   mapstore_ctx ctx;
-  mapstore_opts opts;
   char *data_hash = "A1B2C3D4E5F6";
 
   if (initialize_mapstore(&ctx, NULL) != 0) {
@@ -155,7 +152,12 @@ int get_store_info(mapstore_ctx *ctx, store_info *info);
 Example:
 ```C
   mapstore_ctx ctx;
-  mapstore_opts opts;
+
+  if (initialize_mapstore(&ctx, NULL) != 0) {
+      printf("Error initializing mapstore\n");
+      return 1;
+  }
+
   store_info info;
 
   if ((status = get_store_info(&ctx, &info)) == 0) {
@@ -188,7 +190,12 @@ int get_data_info(mapstore_ctx *ctx, char *hash, data_info *info);
 Example:
 ```C
   mapstore_ctx ctx;
-  mapstore_opts opts;
+
+  if (initialize_mapstore(&ctx, NULL) != 0) {
+      printf("Error initializing mapstore\n");
+      return 1;
+  }
+
   char *data_hash = "A1B2C3D4E5F6";
   data_info info;
 
