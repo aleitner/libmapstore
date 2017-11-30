@@ -279,8 +279,6 @@ int update_map_store(sqlite3 *db, char *where, char *set) {
     memset(query, '\0', BUFSIZ);
     sprintf(query, "UPDATE `map_stores` %s %s LIMIT 1", set, where);
 
-    printf("%s\n", query);
-
     if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
         fprintf(stderr, "Failed to update map_stores\n");
         fprintf(stderr, "SQL error: %s\n", err_msg);

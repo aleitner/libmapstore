@@ -6,6 +6,7 @@ static inline void noop() {};
 #define HELP_TEXT "usage: mapstore [<options>] <command> [<args>]\n\n"         \
     "These are common mapstore commands for various situations:\n\n"           \
     "  store <data-path>         store file\n"                                 \
+    "  stream                    stream data into store\n"                     \
     "  retrieve <hash>           retrieve data from map store\n"               \
     "  delete <hash>             delete data from map store\n"                 \
     "  get-data-info <hash>      retrieve data info from map store\n"          \
@@ -16,7 +17,7 @@ static inline void noop() {};
     "  -h, --help                output usage information\n"                   \
     "  -v, --version             output the version number\n"                  \
 
-#define CLI_VERSION "0.0.1"
+#define CLI_VERSION "1.0.0"
 
 int main (int argc, char **argv)
 {
@@ -107,50 +108,63 @@ int main (int argc, char **argv)
      */
     if (strcmp(command, "store") == 0) {
         printf("Storing data...\n\n");
-        FILE *data_file = NULL;
-        char *data_hash = NULL;
-        char *data_path = argv[command_index + 1];
+        int flags = 0;
+        glob_t results;
+        int ret = 0;
 
-        if (data_path) {
-            data_file = fopen(data_path, "r");;
-        } else {
-            data_file = stdin;
+        for (int i = command_index + 1; i < argc; i++) {
+            flags |= (i > command_index + 1 ? GLOB_APPEND : 0);
+
+            if ((ret = glob(argv[i], flags, 0, &results)) != 0) {
+    			fprintf(stderr, "%s: problem with %s (%s), stopping early\n",
+    				argv[0], argv[i],
+    		        (ret == GLOB_ABORTED ? "filesystem problem" :
+    				 ret == GLOB_NOMATCH ? "no match of pattern" :
+    				 ret == GLOB_NOSPACE ? "no dynamic memory" :
+    				 "unknown problem"));
+                goto end_store;
+    		}
         }
 
-        if (!data_file) {
-            if (data_path) {
+        for (int i = 0; i < results.gl_pathc; i++) {
+            FILE *data_file = NULL;
+            char *data_hash = NULL;
+            char *data_path = NULL;
+
+    		data_path = (results.gl_pathc == 0) ? NULL : results.gl_pathv[i];
+            data_file = fopen(data_path, "r");
+
+            if (!data_file) {
                 printf("Failed to access data: %s\n", data_path);
-            } else {
-                printf("Failed to access data from stdout\n");
+                continue;
             }
 
-            status = 1;
-            goto end_store;
-        }
+            if ((ret = get_file_hash(fileno(data_file), &data_hash)) != 0) {
+                printf("Failed to get data hash: %s\n", data_path);
+                status = 1;
+            } else {
+                if ((ret = store_data(&ctx, fileno(data_file), data_hash)) != 0) {
+                    printf("Failed to store data: %s\n", data_hash);
+                    status = 1;
+                }
+            }
 
-        if ((ret = get_file_hash(fileno(data_file), &data_hash)) != 0) {
-            printf("Failed to get data hash: %s\n", data_path);
-            status = 1;
-            goto end_store;
-        }
+            if (status == 0) {
+                printf("Successfully stored data: %s\n", data_hash);
+            }
 
-        if ((ret = store_data(&ctx, fileno(data_file), data_hash)) != 0) {
-            printf("Failed to store data: %s\n", data_hash);
-            status = 1;
-            goto end_store;
-        }
+            if (data_file) {
+                fclose(data_file);
+            }
 
-        printf("Successfully stored data: %s\n", data_hash);
+            if (data_hash) {
+                free(data_hash);
+            }
+        }
 
         /* Clean up store command */
 end_store:
-        if (data_file) {
-            fclose(data_file);
-        }
-
-        if (data_hash) {
-            free(data_hash);
-        }
+        globfree(&results);
 
         return status;
     }
@@ -214,6 +228,31 @@ end_retrieve:
         printf("Successfully deleted data: %s\n", data_hash);
 
 end_delete:
+        return status;
+    }
+
+    if (strcmp(command, "stream") == 0) {
+        char *data_hash = NULL;
+
+        if (get_file_hash(fileno(stdin), &data_hash) != 0) {
+            printf("Failed to get data hash from stdin\n");
+            status = 1;
+            goto end_stream;
+        }
+
+        if (store_data(&ctx, fileno(stdin), data_hash) != 0) {
+            printf("Failed to store data: %s\n", data_hash);
+            status = 1;
+            goto end_stream;
+        }
+
+        printf("Successfully stored data: %s\n", data_hash);
+
+end_stream:
+        if (data_hash) {
+            free(data_hash);
+        }
+
         return status;
     }
 
