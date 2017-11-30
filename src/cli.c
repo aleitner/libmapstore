@@ -104,7 +104,7 @@ int main (int argc, char **argv)
     opts.allocation_size = (allocation_size > 0) ? allocation_size : 10737418240; // 10GB
     opts.map_size = (map_size > 0) ? map_size : 2147483648;         // 2GB
     opts.path = (mapstore_path != NULL) ? strdup(mapstore_path) : NULL;
-    opts.prealloc = true;
+    opts.prealloc = prealloc;
 
     if (initialize_mapstore(&ctx, opts) != 0) {
         printf("Error initializing mapstore\n");

@@ -143,7 +143,7 @@ Example:
   }
 ```
 
-#### Resize Stire and/or compact store data
+#### Resize Store and/or compact store data
 ```C
 int restructure(mapstore_ctx *ctx, uint64_t map_size, uint64_t alloc_size);
 ```
