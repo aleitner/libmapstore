@@ -355,6 +355,41 @@ MAPSTORE_API int restructure(mapstore_ctx *ctx, uint64_t map_size, uint64_t allo
     // for each value in data_locations
     //   retrieve_data from old CTX
     //   store data in new ctx
+
+    // int des_p[2];
+    // if(pipe(des_p) == -1) {
+    //   perror("Pipe failed");
+    //   exit(1);
+    // }
+    //
+    // if(fork() == 0)            //first fork
+    // {
+    //     close(STDOUT_FILENO);  //closing stdout
+    //     dup(des_p[1]);         //replacing stdout with pipe write
+    //     close(des_p[0]);       //closing pipe read
+    //     close(des_p[1]);
+    //
+    //     retrieve_data(ctx, stdin, hash);
+    //     perror("execvp of ls failed");
+    //     exit(1);
+    // }
+    //
+    // if(fork() == 0)            //creating 2nd child
+    // {
+    //     close(STDIN_FILENO);   //closing stdin
+    //     dup(des_p[0]);         //replacing stdin with pipe read
+    //     close(des_p[1]);       //closing pipe write
+    //     close(des_p[0]);
+    //
+    //     store_data(ctx, stdout, hash);
+    //     perror("execvp of wc failed");
+    //     exit(1);
+    // }
+    //
+    // close(des_p[0]);
+    // close(des_p[1]);
+    // wait(0);
+    // wait(0);
 end_restructure:
     return status;
 }

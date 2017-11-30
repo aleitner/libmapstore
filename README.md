@@ -143,6 +143,28 @@ Example:
   }
 ```
 
+#### Resize Stire and/or compact store data
+```C
+int restructure(mapstore_ctx *ctx, uint64_t map_size, uint64_t alloc_size);
+```
+
+Example:
+```C
+  mapstore_ctx ctx;
+  uint64_t map_size = 1000;
+  uint64_t allocation_size = 100;
+
+  if (initialize_mapstore(&ctx, NULL) != 0) {
+      printf("Error initializing mapstore\n");
+      return 1;
+  }
+
+  if (restructure(&ctx, map_size, allocation_size) != 0) {
+      printf("Failed to restructure\n");
+      return 1;
+  }
+```
+
 #### Get Map Store Metadata
 
 ```C

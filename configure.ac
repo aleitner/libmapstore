@@ -1,4 +1,4 @@
-AC_INIT([libmapstore],[0.0.0-alpha.1])
+AC_INIT([libmapstore],[1.0.0])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([build-aux/m4])
 AM_INIT_AUTOMAKE([foreign])

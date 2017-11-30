@@ -9,6 +9,7 @@ static inline void noop() {};
     "  stream <hash>             stream data into store\n"                     \
     "  retrieve <hash>           retrieve data from map store\n"               \
     "  delete <hash>             delete data from map store\n"                 \
+    "  restructure               chaange store size and/or compact store\n"    \
     "  get-data-info <hash>      retrieve data info from map store\n"          \
     "  get-store-info            retrieve store info from map store\n"         \
     "  help [cmd]                display help for [cmd]\n\n"                   \
@@ -270,6 +271,19 @@ end_stream:
             printf("Hash %s does not exist in store.\n", data_hash);
         }
 
+        return status;
+    }
+
+    if (strcmp(command, "restructure") == 0) {
+        if ((status = restructure(&ctx, map_size, allocation_size)) != 0) {
+            status = 1;
+            printf("Failed to restructure\n");
+            goto end_restructure;
+        }
+
+        printf("Successfully restructured\n");
+
+end_restructure:
         return status;
     }
 
