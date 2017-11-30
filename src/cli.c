@@ -6,7 +6,7 @@ static inline void noop() {};
 #define HELP_TEXT "usage: mapstore [<options>] <command> [<args>]\n\n"         \
     "These are common mapstore commands for various situations:\n\n"           \
     "  store <data-path>         store file\n"                                 \
-    "  stream                    stream data into store\n"                     \
+    "  stream <hash>             stream data into store\n"                     \
     "  retrieve <hash>           retrieve data from map store\n"               \
     "  delete <hash>             delete data from map store\n"                 \
     "  get-data-info <hash>      retrieve data info from map store\n"          \
@@ -232,10 +232,11 @@ end_delete:
     }
 
     if (strcmp(command, "stream") == 0) {
-        char *data_hash = NULL;
+        char *data_hash = argv[command_index + 1];
 
-        if (get_file_hash(fileno(stdin), &data_hash) != 0) {
-            printf("Failed to get data hash from stdin\n");
+        if (data_hash == NULL) {
+            printf("Missing data hash\n");
+            printf(HELP_TEXT);
             status = 1;
             goto end_stream;
         }
@@ -249,10 +250,6 @@ end_delete:
         printf("Successfully stored data: %s\n", data_hash);
 
 end_stream:
-        if (data_hash) {
-            free(data_hash);
-        }
-
         return status;
     }
 
