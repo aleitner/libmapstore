@@ -250,21 +250,25 @@ json_object *expand_free_space_list(json_object *old_free_space, uint64_t old_si
     return new_free_space;
 }
 
-int create_map_store(char *path, uint64_t size) {
+int create_map_store(char *path, uint64_t size, bool prealloc) {
     int status = 0;
     uint8_t *mmap_store = NULL;         // Memory Mapped map_store
     FILE *fmap_store = fopen(path, "wb");
 
     fprintf(stdout, "Created mapstore: %s, size: %"PRIu64"\n", path, size);
 
-    // int falloc_status = allocatefile(fileno(fmap_store), size);
-    //
-    // if (falloc_status) {
-    //     status = 1;
-    //     fprintf(stdout, "Could not allocate space for mmap parity " \
-    //                      "shard file: %i", falloc_status);
-    //     goto create_map_store;
-    // }
+    if (!prealloc) {
+        goto create_map_store;
+    }
+
+    int falloc_status = allocatefile(fileno(fmap_store), size);
+
+    if (falloc_status) {
+        status = 1;
+        fprintf(stdout, "Could not allocate space for mmap parity " \
+                         "shard file: %i", falloc_status);
+        goto create_map_store;
+    }
 
 create_map_store:
     if (fmap_store) {

@@ -12,6 +12,8 @@ MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts) {
     ctx->mapstore_path = NULL;
     ctx->database_path = NULL;
 
+    ctx->prealloc = (opts.prealloc) ? opts.prealloc : false;
+
     /* Allocation size is required */
     if (!opts.allocation_size) {
         fprintf(stderr, "Can't initialize mapstore context. \
@@ -129,7 +131,7 @@ MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts) {
         // Create map file
         memset(mapstore_path, '\0', BUFSIZ);
         sprintf(mapstore_path, "%s%"PRIu64".map", ctx->mapstore_path, f);
-        if (create_map_store(mapstore_path, ctx->map_size) != 0) {
+        if (create_map_store(mapstore_path, ctx->map_size, ctx->prealloc) != 0) {
             fprintf(stderr,
                 "Failed to create mapped file: %s of size %"PRIu64,
                 ctx->mapstore_path,

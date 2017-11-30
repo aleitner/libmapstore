@@ -12,9 +12,12 @@ static inline void noop() {};
     "  restructure               chaange store size and/or compact store\n"    \
     "  get-data-info <hash>      retrieve data info from map store\n"          \
     "  get-store-info            retrieve store info from map store\n"         \
-    "  help [cmd]                display help for [cmd]\n\n"                   \
+    "  help                      display help for [cmd]\n\n"                   \
     "options:\n"                                                               \
-    "  -p, --path <path>         Path toe mapstore\n"                          \
+    "  -p, --path <path>         path to mapstore\n"                           \
+    "  -r, --prealloc            if mapstore should be preallocated files\n"   \
+    "  -a, --alloc <path>        total size of store\n"                        \
+    "  -m, --map <path>          max file size for maps in store\n"            \
     "  -h, --help                output usage information\n"                   \
     "  -v, --version             output the version number\n"                  \
 
@@ -30,14 +33,14 @@ int main (int argc, char **argv)
     char *mapstore_path = NULL;
     uint64_t allocation_size = 0;
     uint64_t map_size = 0;
+    int prealloc = false;
 
     static struct option cmd_options[] = {
         {"version", no_argument,  0, 'v'},
-        {"log", required_argument,  0, 'l'},
+        {"prealloc", no_argument,  0, 'r'},
         {"alloc", required_argument,  0, 'a'},
         {"map", required_argument,  0, 'm'},
         {"path", required_argument,  0, 'p'},
-        {"debug", no_argument,  0, 'd'},
         {"help", no_argument,  0, 'h'},
         {0, 0, 0, 0}
     };
@@ -61,6 +64,9 @@ int main (int argc, char **argv)
                 break;
             case 'p':
                 mapstore_path = optarg;
+                break;
+            case 'r':
+                prealloc = true;
                 break;
             case 'V':
             case 'v':
@@ -87,7 +93,7 @@ int main (int argc, char **argv)
     int command_index = optind;
 
     char *command = argv[command_index];
-    if (!command) {
+    if (!command || strcmp(command, "help") == 0) {
         printf(HELP_TEXT);
         return 0;
     }
@@ -98,6 +104,7 @@ int main (int argc, char **argv)
     opts.allocation_size = (allocation_size > 0) ? allocation_size : 10737418240; // 10GB
     opts.map_size = (map_size > 0) ? map_size : 2147483648;         // 2GB
     opts.path = (mapstore_path != NULL) ? strdup(mapstore_path) : NULL;
+    opts.prealloc = true;
 
     if (initialize_mapstore(&ctx, opts) != 0) {
         printf("Error initializing mapstore\n");

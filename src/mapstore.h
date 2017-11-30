@@ -43,12 +43,14 @@ typedef struct  {
   char *mapstore_path;
   char *database_path;
   sqlite3 *db;
+  bool prealloc;
 } mapstore_ctx;
 
 typedef struct  {
   uint64_t allocation_size;
   uint64_t map_size;
   char *path;
+  bool prealloc;
 } mapstore_opts;
 
 typedef struct  {
