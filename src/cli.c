@@ -132,6 +132,13 @@ int main (int argc, char **argv)
             char *data_path = NULL;
 
     		data_path = (results.gl_pathc == 0) ? NULL : results.gl_pathv[i];
+
+            /* Don't read directories */
+            struct stat st;
+            if (stat(data_path, &st) == 0 && S_ISDIR(st.st_mode)) {
+                continue;
+            }
+
             data_file = fopen(data_path, "r");
 
             if (!data_file) {
