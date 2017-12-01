@@ -11,13 +11,15 @@ MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts) {
     /* Initialized path variables */
     ctx->mapstore_path = NULL;
     ctx->database_path = NULL;
+    char *base_path = NULL;
+    char *map_folder = NULL;
 
     ctx->prealloc = (opts.prealloc) ? opts.prealloc : false;
 
     /* Allocation size is required */
     if (!opts.allocation_size) {
-        fprintf(stderr, "Can't initialize mapstore context. \
-                Missing required allocation size\n");
+        fprintf(stderr, "Can't initialize mapstore context: " \
+                        "Missing required allocation size\n");
         status = 1;
         goto end_initalize;
     }
@@ -30,7 +32,7 @@ MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts) {
     ctx->total_mapstores = (rm > 0) ? dv + 1 : dv;   // If there is a remainder make sure we create a row an map for that smaller file
 
     /* Format path for shardata and database n*/
-    char *base_path = NULL;
+
     if (opts.path != NULL) {
         base_path = strdup(opts.path);
         if (base_path[strlen(base_path)-1] == separator()) {
@@ -40,6 +42,8 @@ MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts) {
         base_path = calloc(2, sizeof(char));
         strcpy(base_path, ".");
     }
+
+    ctx->base_path = base_path;
 
     ctx->mapstore_path = calloc(strlen(base_path) + 9, sizeof(char));
     sprintf(ctx->mapstore_path, "%s%cshards%c", base_path, separator(), separator());
@@ -145,7 +149,6 @@ MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts) {
 
 end_initalize:
     if (status == 1) {
-        // Make sure we have stores
         struct stat st;
         for (uint64_t store = 1; store <= ctx->total_mapstores; store++) {
             memset(mapstore_path, '\0', BUFSIZ);
@@ -158,23 +161,20 @@ end_initalize:
         }
 
         if (stat(ctx->database_path, &st) != 0) {
-            fprintf(stderr, "Database was not created");
+            fprintf(stderr, "Database was not created\n");
             status = 1;
         }
-    }
 
-
-    if (base_path) {
-        free(base_path);
-    }
-
-    if (status == 1) {
         if (ctx->mapstore_path) {
             free(ctx->mapstore_path);
         }
 
         if (ctx->database_path) {
             free(ctx->database_path);
+        }
+
+        if (base_path) {
+            free(base_path);
         }
     }
 
@@ -351,9 +351,43 @@ end_delete_data:
 
 MAPSTORE_API int restructure(mapstore_ctx *ctx, uint64_t map_size, uint64_t alloc_size) {
     int status = 0;
+    char new_path[strlen(ctx->base_path) + 2];
 
-    // Validate values
-    // create new context
+    uint64_t used_space = 0;
+    if (sum_column_for_table(ctx->db, "size", "data_locations", &used_space) != 0) {
+        status = 1;
+        goto end_restructure;
+    }
+
+    if (used_space > map_size) {
+        printf("Cannot restructure to size %"PRIu64" with %"PRIu64" worth of data\n", map_size, used_space);
+        status = 1;
+        goto end_restructure;
+    }
+
+    mapstore_opts opts;
+    opts.allocation_size = alloc_size; // 10GB
+    opts.map_size = map_size;         // 2GB
+    opts.prealloc = ctx->prealloc;
+
+    memset(new_path, '\0', strlen(ctx->base_path) + 2);
+    sprintf(new_path, "%s%cT", ctx->base_path, separator());
+    opts.path = new_path;
+
+    /* Create map store folder */
+    if (create_directory(opts.path) != 0) {
+        fprintf(stderr, "Could not create folder: %s\n", opts.path);
+        status = 1;
+        goto end_restructure;
+    };
+
+    mapstore_ctx new_ctx;
+    if (initialize_mapstore(&new_ctx, opts) != 0) {
+        printf("Error initializing mapstore\n");
+        status = 1;
+        goto end_restructure;
+    }
+
     // for each value in data_locations
     //   retrieve_data from old CTX
     //   store data in new ctx
@@ -392,6 +426,11 @@ MAPSTORE_API int restructure(mapstore_ctx *ctx, uint64_t map_size, uint64_t allo
     // close(des_p[1]);
     // wait(0);
     // wait(0);
+
+    // Delete old structure
+    // rename new structure
+    // set old ctx to new ctx values
+
 end_restructure:
     return status;
 }

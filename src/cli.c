@@ -282,7 +282,12 @@ end_stream:
     }
 
     if (strcmp(command, "restructure") == 0) {
-        if ((status = restructure(&ctx, map_size, allocation_size)) != 0) {
+        uint64_t new_map_size = ctx.map_size;
+        uint64_t new_allocation_size = ctx.allocation_size;
+
+        printf("map %"PRIu64" alloc %"PRIu64"\n", new_map_size, new_allocation_size);
+
+        if ((status = restructure(&ctx, new_map_size, new_allocation_size)) != 0) {
             status = 1;
             printf("Failed to restructure\n");
             goto end_restructure;
