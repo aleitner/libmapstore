@@ -489,3 +489,42 @@ int get_count(sqlite3 *db, char *query) {
 
     return 0;
 }
+
+int get_data_hashes(sqlite3 *db, char hashes[][41]) {
+    int rc;
+    char column_name[BUFSIZ];
+    sqlite3_stmt *stmt = NULL;
+    char *query = "SELECT * FROM `data_locations`;";
+    int x = 0;
+
+    if ((rc = sqlite3_prepare_v2(db, query, BUFSIZ, &stmt, 0)) != SQLITE_OK) {
+        fprintf(stderr, "sql error: %s\n", sqlite3_errmsg(db));
+    } else while((rc = sqlite3_step(stmt)) != SQLITE_DONE) {
+        switch(rc) {
+            case SQLITE_BUSY:
+                fprintf(stderr, "Database is busy\n");
+                sleep(1);
+                break;
+            case SQLITE_ERROR:
+                fprintf(stderr, "step error: %s\n", sqlite3_errmsg(db));
+                return 0;
+            case SQLITE_ROW:
+                {
+                    int n = sqlite3_column_count(stmt);
+                    int i;
+                    for (i = 0; i < n; i++) {
+                        memset(column_name, '\0', BUFSIZ);
+                        strcpy(column_name, sqlite3_column_name(stmt, i));
+
+                        if (strcmp(column_name, "hash") == 0) {
+                            memset(hashes, '\0', 41);
+                            strcpy(hashes[x], (const char *)sqlite3_column_text(stmt, i));
+                            x++;
+                        }
+                    }
+                }
+        }
+    }
+
+    return 0;
+}

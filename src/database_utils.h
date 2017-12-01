@@ -59,5 +59,6 @@ int get_pos_from_data_locations(sqlite3 *db, char *hash, json_object **positions
 int delete_by_hash_from_data_locations(sqlite3 *db, char *hash);
 int delete_by_id_from_map_stores(sqlite3 *db, uint64_t id);
 int get_count(sqlite3 *db, char *query);
+int get_data_hashes(sqlite3 *db, char hashes[][41]);
 
 #endif /* MAPSTORE_DATABASE_UTILS_H */
