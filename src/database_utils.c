@@ -460,7 +460,7 @@ int get_count(sqlite3 *db, char *query) {
     char column_name[BUFSIZ];
     sqlite3_stmt *stmt = NULL;
 
-    if ((rc = sqlite3_prepare_v2(db, query, BUFSIZ, &stmt, 0)) != SQLITE_OK) {
+    if ((rc = sqlite3_prepare_v2(db, query, strlen(query), &stmt, 0)) != SQLITE_OK) {
         fprintf(stderr, "sql error: %s\n", sqlite3_errmsg(db));
     } else while((rc = sqlite3_step(stmt)) != SQLITE_DONE) {
         switch(rc) {
