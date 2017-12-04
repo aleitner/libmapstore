@@ -314,9 +314,6 @@ uint64_t prepare_store_positions(uint64_t store_id, json_object *free_locations_
     // Get list of updated freespaces
     json_object *updated_free_positions = json_object_new_array();
 
-    // Get previously added store_positions
-    json_object *used_space = json_object_new_array();
-
     json_object *map_store_obj = json_object_new_object();
 
     for (uint64_t arr_i = 0; arr_i < json_object_array_length(free_locations_arr); arr_i++) {

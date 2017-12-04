@@ -42,6 +42,8 @@ int get_map_plan(sqlite3 *db,
                                              data_size - remaining,
                                              remaining,
                                              map_coordinates);
+
+        json_object_put(row.free_locations);
     }
 
     if (remaining > 0 ) {
