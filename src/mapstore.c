@@ -190,7 +190,7 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, char *hash) {
     int status = 0;
     json_object *map_plan = json_object_new_object();
     char where[BUFSIZ];
-    char set[BUFSIZ];
+    char *set = NULL;
     json_object *free_pos_obj = NULL;
     json_object *store_positions_obj = NULL;
     json_object *used_space_obj = NULL;
@@ -216,12 +216,17 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, char *hash) {
 
     // Update map_stores free_locations and free_space
     json_object_object_foreach(map_plan, store_id, store_meta) {
+        if (set) {
+            free(set);
+            set = NULL;
+        }
         json_object_object_get_ex(store_meta, "free_positions", &free_pos_obj);
         json_object_object_get_ex(store_meta, "store_positions", &store_positions_obj);
         json_object_object_get_ex(store_meta, "used_space", &used_space_obj);
+
         memset(where, '\0', BUFSIZ);
-        memset(set, '\0', BUFSIZ);
         sprintf(where, "WHERE Id=%s", store_id);
+        set = calloc(strlen(json_object_to_json_string(free_pos_obj)) + 20 + 52, sizeof(char));
         sprintf(set,
                 "SET free_space = free_space - %"PRIu64", free_locations = '%s'",
                 json_object_get_int64(used_space_obj),
@@ -236,7 +241,7 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, char *hash) {
     }
 
     // Add file to data_locations
-    memset(set, '\0', BUFSIZ);
+    set = calloc(strlen(json_object_to_json_string(all_data_locations)) + 60 + 54, sizeof(char));
     sprintf(set,
             "(hash,size,positions,uploaded) VALUES('%s',%"PRIu64",'%s','false')",
             hash,
@@ -261,8 +266,12 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, char *hash) {
     }
 
 end_store_data:
-    if (all_data_locations) {
-        json_object_put(all_data_locations);
+    if (set) {
+        free(set);
+    }
+
+    if (map_plan) {
+        json_object_put(map_plan);
     }
     return status;
 }
@@ -513,6 +522,7 @@ MAPSTORE_API int mapstore_ctx_free(mapstore_ctx *ctx) {
     }
 
     if (ctx->db) {
+        // Sometimes I don't free all the memory properly 😕
         sqlite3_close_v2(ctx->db);
     }
 

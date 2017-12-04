@@ -293,9 +293,10 @@ int update_map_store(sqlite3 *db, char *where, char *set) {
 int insert_to(sqlite3 *db, char *table, char *set) {
     int status = 0;
     char *err_msg = NULL;
+    int len = strlen(table) + strlen(set) + 16;
 
-    char query[BUFSIZ];
-    memset(query, '\0', BUFSIZ);
+    char query[len];
+    memset(query, '\0', len);
     sprintf(query, "INSERT INTO `%s` %s", table, set);
 
     if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
