@@ -102,6 +102,7 @@ int get_updated_free_locations(sqlite3 *db, json_object *positions, json_object 
         json_object_object_add(map_store_obj, "free_space", json_object_new_int64(freespace));
         json_object_object_add(*updated_positions, store_id, map_store_obj);
 
+        json_object_put(row.free_locations);
     }
 
 end_update_free_locations:
