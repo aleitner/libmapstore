@@ -40,6 +40,8 @@ extern "C" {
 
 #define READ_END 0
 #define WRITE_END 1
+#define MAX_UINT64_STR 20
+#define HASH_LENGTH 40
 
 typedef struct  {
   uint64_t allocation_size;

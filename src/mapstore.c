@@ -226,7 +226,7 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, char *hash) {
 
         memset(where, '\0', BUFSIZ);
         sprintf(where, "WHERE Id=%s", store_id);
-        set = calloc(strlen(json_object_to_json_string(free_pos_obj)) + 20 + 52, sizeof(char));
+        set = calloc(strlen(json_object_to_json_string(free_pos_obj)) + MAX_UINT64_STR + 51 + 1, sizeof(char));
         sprintf(set,
                 "SET free_space = free_space - %"PRIu64", free_locations = '%s'",
                 json_object_get_int64(used_space_obj),
@@ -241,7 +241,7 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, char *hash) {
     }
 
     // Add file to data_locations
-    set = calloc(strlen(json_object_to_json_string(all_data_locations)) + 60 + 54, sizeof(char));
+    set = calloc(strlen(json_object_to_json_string(all_data_locations)) + MAX_UINT64_STR + HASH_LENGTH + 55 + 1, sizeof(char));
     sprintf(set,
             "(hash,size,positions,uploaded) VALUES('%s',%"PRIu64",'%s','false')",
             hash,
