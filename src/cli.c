@@ -241,6 +241,7 @@ end_retrieve:
         }
 
         fprintf(stdout, "Successfully deleted data: %s\n", data_hash);
+        goto end_program;
     }
 
     if (strcmp(command, "stream") == 0) {
@@ -260,6 +261,7 @@ end_retrieve:
         }
 
         fprintf(stdout, "Successfully stored data: %s\n", data_hash);
+        goto end_program;
     }
 
     if (strcmp(command, "get-data-info") == 0) {
@@ -286,6 +288,7 @@ end_retrieve:
         }
 
         fprintf(stdout, "Successfully restructured\n");
+        goto end_program;
     }
 
     if (strcmp(command, "get-store-info") == 0) {
@@ -315,6 +318,10 @@ end_retrieve:
     fprintf(stderr, HELP_TEXT);
 
 end_program:
+
+    if (opts.path) {
+        free(opts.path);
+    }
 
     mapstore_ctx_free(&ctx);
 
