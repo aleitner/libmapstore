@@ -181,7 +181,7 @@ int main (int argc, char **argv)
 end_store:
         globfree(&results);
 
-        return status;
+        goto end_program;
     }
 
     if (strcmp(command, "retrieve") == 0) {
@@ -221,7 +221,7 @@ end_retrieve:
             fclose(retrieval_file);
         }
 
-        return status;
+        goto end_program;
     }
 
     if (strcmp(command, "delete") == 0) {
@@ -231,19 +231,16 @@ end_retrieve:
             fprintf(stderr, "Missing data hash\n");
             printf(HELP_TEXT);
             status = 1;
-            goto end_delete;
+            goto end_program;
         }
 
         if ((ret = delete_data(&ctx, data_hash)) != 0) {
             fprintf(stderr, "Failed to delete data: %s\n", data_hash);
             status = 1;
-            goto end_delete;
+            goto end_program;
         }
 
         fprintf(stdout, "Successfully deleted data: %s\n", data_hash);
-
-end_delete:
-        return status;
     }
 
     if (strcmp(command, "stream") == 0) {
@@ -253,19 +250,16 @@ end_delete:
             fprintf(stderr, "Missing data hash\n");
             fprintf(stderr, HELP_TEXT);
             status = 1;
-            goto end_stream;
+            goto end_program;
         }
 
         if (store_data(&ctx, STDIN_FILENO, data_hash) != 0) {
             fprintf(stderr, "Failed to store data: %s\n", data_hash);
             status = 1;
-            goto end_stream;
+            goto end_program;
         }
 
         fprintf(stdout, "Successfully stored data: %s\n", data_hash);
-
-end_stream:
-        return status;
     }
 
     if (strcmp(command, "get-data-info") == 0) {
@@ -278,7 +272,7 @@ end_stream:
             fprintf(stderr, "Hash %s does not exist in store.\n", data_hash);
         }
 
-        return status;
+        goto end_program;
     }
 
     if (strcmp(command, "restructure") == 0) {
@@ -288,13 +282,10 @@ end_stream:
         if ((status = restructure(&ctx, new_map_size, new_allocation_size)) != 0) {
             status = 1;
             fprintf(stderr, "Failed to restructure\n");
-            goto end_restructure;
+            goto end_program;
         }
 
         fprintf(stdout, "Successfully restructured\n");
-
-end_restructure:
-        return status;
     }
 
     if (strcmp(command, "get-store-info") == 0) {
@@ -318,8 +309,14 @@ end_restructure:
             fprintf(stderr, "Failed to get store info.\n");
         }
 
-        return status;
+        goto end_program;
     }
+
+    fprintf(stderr, HELP_TEXT);
+
+end_program:
+
+    mapstore_ctx_free(&ctx);
 
     return status;
 }

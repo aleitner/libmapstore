@@ -80,6 +80,8 @@ MAPSTORE_API int get_data_info(mapstore_ctx *ctx, char *hash, data_info *info);
 MAPSTORE_API int get_store_info(mapstore_ctx *ctx, store_info *info);
 MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts);
 MAPSTORE_API int restructure(mapstore_ctx *ctx, uint64_t map_size, uint64_t alloc_size);
+MAPSTORE_API int mapstore_ctx_free(mapstore_ctx *ctx);
+
 
 int get_map_plan(sqlite3 *db, uint64_t total_stores, uint64_t data_size, json_object *map_coordinates);
 int get_updated_free_locations(sqlite3 *db, json_object *positions, json_object **updated_positions);

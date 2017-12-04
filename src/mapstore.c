@@ -6,11 +6,13 @@
 MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts) {
     int status = 0;
     sqlite3 *db = NULL;
+    // ctx = NULL;
     ctx->db = NULL;
 
     /* Initialized path variables */
     ctx->mapstore_path = NULL;
     ctx->database_path = NULL;
+    ctx->base_path = NULL;
     char *base_path = NULL;
     char *map_folder = NULL;
 
@@ -491,4 +493,24 @@ MAPSTORE_API int get_store_info(mapstore_ctx *ctx, store_info *info) {
 
 end_get_store_info:
     return status;
+}
+
+MAPSTORE_API int mapstore_ctx_free(mapstore_ctx *ctx) {
+    if (ctx->mapstore_path) {
+        free(ctx->mapstore_path);
+    }
+
+    if (ctx->database_path) {
+        free(ctx->database_path);
+    }
+
+    if (ctx->base_path) {
+        free(ctx->base_path);
+    }
+
+    if (ctx->db) {
+        sqlite3_close_v2(ctx->db);
+    }
+
+    return 0;
 }
