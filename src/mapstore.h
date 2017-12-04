@@ -32,6 +32,8 @@ extern "C" {
 #include <json-c/json.h>
 #include <sqlite3.h>
 #include <inttypes.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include "utils.h"
 #include "database_utils.h"
