@@ -348,6 +348,10 @@ end_delete_data:
     if (positions) {
         json_object_put(positions);
     }
+
+    if (updated_positions) {
+        json_object_put(updated_positions);
+    }
     return status;
 }
 

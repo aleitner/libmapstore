@@ -83,6 +83,7 @@ int get_updated_free_locations(sqlite3 *db, json_object *positions, json_object 
 
         if (get_store_rows(db, where, &row) != 0) {
             status = 1;
+            json_object_put(*updated_positions);
             goto end_update_free_locations;
         };
 
