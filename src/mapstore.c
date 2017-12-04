@@ -361,7 +361,7 @@ MAPSTORE_API int restructure(mapstore_ctx *ctx, uint64_t map_size, uint64_t allo
     char hashes[info.data_count][41];
 
     if (info.used_space > map_size) {
-        printf("Cannot restructure to size %"PRIu64" with %"PRIu64" worth of data\n", map_size, info.used_space);
+        fprintf(stderr, "Cannot restructure to size %"PRIu64" with %"PRIu64" worth of data\n", map_size, info.used_space);
         status = 1;
         goto end_restructure;
     }
@@ -384,54 +384,61 @@ MAPSTORE_API int restructure(mapstore_ctx *ctx, uint64_t map_size, uint64_t allo
 
     mapstore_ctx new_ctx;
     if (initialize_mapstore(&new_ctx, opts) != 0) {
-        printf("Error initializing mapstore\n");
+        fprintf(stderr, "Error initializing mapstore\n");
         status = 1;
         goto end_restructure;
     }
 
     if (get_data_hashes(ctx->db, hashes) != 0) {
-        printf("Could not get data hashes\n");
+        fprintf(stderr, "Could not get data hashes\n");
         status = 1;
         goto end_restructure;
     }
 
     for (int i = 0; i < info.data_count; i++) {
-        printf("Hash: %s\n", hashes[i]);
-        // int des_p[2];
-        // if(pipe(des_p) == -1) {
-        //   perror("Pipe failed");
-        //   status = 1;
-        //   goto end_restructure;
-        // }
-        //
-        // if(fork() == 0) {
-        //     close(STDOUT_FILENO);  //closing stdout
-        //     dup(des_p[1]);         //replacing stdout with pipe write
-        //     close(des_p[0]);       //closing pipe read
-        //     close(des_p[1]);
-        //
-        //     retrieve_data(ctx, stdin, hash);
-        //     perror("execvp of ls failed");
-        //     exit(1);
-        // }
-        //
-        // if(fork() == 0) {
-        //     close(STDIN_FILENO);   //closing stdin
-        //     dup(des_p[0]);         //replacing stdin with pipe read
-        //     close(des_p[1]);       //closing pipe write
-        //     close(des_p[0]);
-        //
-        //     store_data(ctx, stdout, hash);
-        //     perror("execvp of wc failed");
-        //     exit(1);
-        // }
-        //
-        // close(des_p[0]);
-        // close(des_p[1]);
-        // wait(0);
-        // wait(0);
-    }
+        fprintf(stdout, "Hash: %s\n", hashes[i]);
+        int des_p[2];
+        if(pipe(des_p) == -1) {
+          fprintf(stderr, "Failed to create pipe\n");
+          status = 1;
+          goto end_restructure;
+        }
 
+        if(fork() == 0) {
+            close(STDOUT_FILENO);  //closing stdout
+            if (dup(des_p[1]) < 0) { //replacing stdout with pipe write
+                perror("retrieve_data dup failed");
+                exit(1);
+            }
+            close(des_p[0]);       //closing pipe read
+            close(des_p[1]);
+            if ((status = retrieve_data(ctx, STDOUT_FILENO, hashes[i])) != 0) {
+                goto end_restructure;
+            }
+            perror("retrieve_data failed");
+            exit(1);
+        }
+
+        if(fork() == 0) {
+            close(STDIN_FILENO);   //closing stdin
+            if (dup(des_p[0]) < 0) { //replacing stdout with pipe read
+                perror("store_data dup failed");
+                exit(1);
+            }
+            close(des_p[1]);       //closing pipe write
+            close(des_p[0]);
+            if ((status = store_data(&new_ctx, STDIN_FILENO, hashes[i])) != 0) {
+                goto end_restructure;
+            }
+            perror("store_data failed");
+            exit(1);
+        }
+
+        close(des_p[0]);
+        close(des_p[1]);
+        wait(0);
+        wait(0);
+    }
     // Delete old structure
     // rename new structure
     // set old ctx to new ctx values

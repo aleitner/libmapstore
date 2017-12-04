@@ -70,23 +70,23 @@ int main (int argc, char **argv)
                 break;
             case 'V':
             case 'v':
-                printf(CLI_VERSION "\n\n");
+                fprintf(stdout, CLI_VERSION "\n\n");
                 exit(0);
                 break;
             case 'h':
-                printf(HELP_TEXT);
+                fprintf(stdout, HELP_TEXT);
                 exit(0);
                 break;
             default:
-                printf("%c is not a recognized option\n\n", c);
-                printf(HELP_TEXT);
+                fprintf(stderr, "%c is not a recognized option\n\n", c);
+                fprintf(stderr, HELP_TEXT);
                 exit(1);
             break;
         }
     }
 
     if (log_level > 4 || log_level < 0) {
-        printf("Invalid log level\n");
+        fprintf(stderr, "Invalid log level\n");
         return 1;
     }
 
@@ -94,7 +94,7 @@ int main (int argc, char **argv)
 
     char *command = argv[command_index];
     if (!command || strcmp(command, "help") == 0) {
-        printf(HELP_TEXT);
+        fprintf(stderr, HELP_TEXT);
         return 0;
     }
 
@@ -107,7 +107,7 @@ int main (int argc, char **argv)
     opts.prealloc = prealloc;
 
     if (initialize_mapstore(&ctx, opts) != 0) {
-        printf("Error initializing mapstore\n");
+        fprintf(stderr, "Error initializing mapstore\n");
         return 1;
     }
 
@@ -115,7 +115,7 @@ int main (int argc, char **argv)
      * Store File
      */
     if (strcmp(command, "store") == 0) {
-        printf("Storing data...\n\n");
+        fprintf(stdout, "Storing data...\n\n");
         int flags = 0;
         glob_t results;
         int ret = 0;
@@ -150,22 +150,22 @@ int main (int argc, char **argv)
             data_file = fopen(data_path, "r");
 
             if (!data_file) {
-                printf("Failed to access data: %s\n", data_path);
+                fprintf(stderr, "Failed to access data: %s\n", data_path);
                 continue;
             }
 
             if ((ret = get_file_hash(fileno(data_file), &data_hash)) != 0) {
-                printf("Failed to get data hash: %s\n", data_path);
+                fprintf(stderr, "Failed to get data hash: %s\n", data_path);
                 status = 1;
             } else {
                 if ((ret = store_data(&ctx, fileno(data_file), data_hash)) != 0) {
-                    printf("Failed to store data: %s\n", data_hash);
+                    fprintf(stderr, "Failed to store data: %s\n", data_hash);
                     status = 1;
                 }
             }
 
             if (status == 0) {
-                printf("Successfully stored data: %s\n", data_hash);
+                fprintf(stdout, "Successfully stored data: %s\n", data_hash);
             }
 
             if (data_file) {
@@ -185,14 +185,14 @@ end_store:
     }
 
     if (strcmp(command, "retrieve") == 0) {
-        printf("Retrieving data\n\n");
+        fprintf(stdout, "Retrieving data\n\n");
         char *data_hash = argv[command_index + 1];
         char *retrieval_path = argv[command_index + 2];
         FILE *retrieval_file = NULL;
 
         if (data_hash == NULL) {
-            printf("Missing data hash\n");
-            printf(HELP_TEXT);
+            fprintf(stderr, "Missing data hash\n");
+            fprintf(stderr, HELP_TEXT);
             status = 1;
             goto end_retrieve;
         }
@@ -200,7 +200,7 @@ end_store:
         if (retrieval_path) {
             retrieval_file = fopen(retrieval_path, "w+");
             if (!retrieval_file) {
-                printf("Invalid path: %s\n", retrieval_path);
+                fprintf(stderr, "Invalid path: %s\n", retrieval_path);
                 status = 1;
                 goto end_retrieve;
             }
@@ -209,12 +209,12 @@ end_store:
         }
 
         if ((ret = retrieve_data(&ctx, fileno(retrieval_file), data_hash)) != 0) {
-            printf("Failed to retrieve data: %s\n", data_hash);
+            fprintf(stderr, "Failed to retrieve data: %s\n", data_hash);
             status = 1;
             goto end_retrieve;
         }
 
-        printf("Successfully retrieved data: %s\n", data_hash);
+        fprintf(stdout, "Successfully retrieved data: %s\n", data_hash);
 
 end_retrieve:
         if (retrieval_file) {
@@ -228,19 +228,19 @@ end_retrieve:
         char *data_hash = argv[command_index + 1];
 
         if (data_hash == NULL) {
-            printf("Missing data hash\n");
+            fprintf(stderr, "Missing data hash\n");
             printf(HELP_TEXT);
             status = 1;
             goto end_delete;
         }
 
         if ((ret = delete_data(&ctx, data_hash)) != 0) {
-            printf("Failed to delete data: %s\n", data_hash);
+            fprintf(stderr, "Failed to delete data: %s\n", data_hash);
             status = 1;
             goto end_delete;
         }
 
-        printf("Successfully deleted data: %s\n", data_hash);
+        fprintf(stdout, "Successfully deleted data: %s\n", data_hash);
 
 end_delete:
         return status;
@@ -250,19 +250,19 @@ end_delete:
         char *data_hash = argv[command_index + 1];
 
         if (data_hash == NULL) {
-            printf("Missing data hash\n");
-            printf(HELP_TEXT);
+            fprintf(stderr, "Missing data hash\n");
+            fprintf(stderr, HELP_TEXT);
             status = 1;
             goto end_stream;
         }
 
-        if (store_data(&ctx, fileno(stdin), data_hash) != 0) {
-            printf("Failed to store data: %s\n", data_hash);
+        if (store_data(&ctx, STDIN_FILENO, data_hash) != 0) {
+            fprintf(stderr, "Failed to store data: %s\n", data_hash);
             status = 1;
             goto end_stream;
         }
 
-        printf("Successfully stored data: %s\n", data_hash);
+        fprintf(stdout, "Successfully stored data: %s\n", data_hash);
 
 end_stream:
         return status;
@@ -273,9 +273,9 @@ end_stream:
 
         data_info info;
         if ((status = get_data_info(&ctx, data_hash, &info)) == 0) {
-            printf("{ \"hash\": \"%s\", \"size\": %"PRIu64" }\n", info.hash, info.size);
+            fprintf(stdout, "{ \"hash\": \"%s\", \"size\": %"PRIu64" }\n", info.hash, info.size);
         } else {
-            printf("Hash %s does not exist in store.\n", data_hash);
+            fprintf(stderr, "Hash %s does not exist in store.\n", data_hash);
         }
 
         return status;
@@ -287,11 +287,11 @@ end_stream:
 
         if ((status = restructure(&ctx, new_map_size, new_allocation_size)) != 0) {
             status = 1;
-            printf("Failed to restructure\n");
+            fprintf(stderr, "Failed to restructure\n");
             goto end_restructure;
         }
 
-        printf("Successfully restructured\n");
+        fprintf(stdout, "Successfully restructured\n");
 
 end_restructure:
         return status;
@@ -300,7 +300,8 @@ end_restructure:
     if (strcmp(command, "get-store-info") == 0) {
         store_info info;
         if ((status = get_store_info(&ctx, &info)) == 0) {
-            printf("{ \"free_space\": %"PRIu64", "    \
+            fprintf(stdout,
+                    "{ \"free_space\": %"PRIu64", "    \
                     "\"used_space\": %"PRIu64", "     \
                     "\"allocation_size\": %"PRIu64", "\
                     "\"map_size\": %"PRIu64", "       \
@@ -314,7 +315,7 @@ end_restructure:
                     info.data_count,
                     info.total_mapstores);
         } else {
-            printf("Failed to get store info.\n");
+            fprintf(stderr, "Failed to get store info.\n");
         }
 
         return status;

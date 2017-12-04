@@ -284,7 +284,7 @@ uint64_t get_file_size(int fd) {
 
     ret = fstat(fd, &st);
     if (ret != 0) {
-        printf("Could not get file size\n");
+        fprintf(stderr, "Could not get file size\n");
         return 0;
     }
 
@@ -465,7 +465,12 @@ int read_from_store(int output_fd, char *store_dir, json_object *data_locations)
                 bytes_to_read = ((sector_size - total_written_for_sector) > BUFSIZ) ? BUFSIZ : sector_size - total_written_for_sector;
                 bytes_read = pread(fileno(mapstore), buf, bytes_to_read, first + total_written_for_sector);
 
-                bytes_written = pwrite(output_fd, buf, bytes_read, position + total_written_for_sector);
+                if (output_fd == STDOUT_FILENO) {
+                    // Data could be out of order here...
+                    bytes_written = write(output_fd, buf, bytes_read);
+                } else {
+                    bytes_written = pwrite(output_fd, buf, bytes_read, position + total_written_for_sector);
+                }
 
                 total_written_for_sector += bytes_written;
             } while (total_written_for_sector < sector_size && bytes_read > 0);

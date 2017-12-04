@@ -16,7 +16,7 @@ int get_file_hash(int fd, char **hash) {
         read_len = read(fd, read_data, BUFSIZ);
 
         if (read_len == -1) {
-            printf("Error reading file for hashing\n");
+            fprintf(stderr, "Error reading file for hashing\n");
             return 1;
         }
 
@@ -35,7 +35,7 @@ int get_file_hash(int fd, char **hash) {
     size_t encode_len = BASE16_ENCODE_LENGTH(RIPEMD160_DIGEST_SIZE);
     *hash = calloc(encode_len + 1, sizeof(uint8_t));
     if (!*hash) {
-        printf("Error converting hash data to string\n");
+        fprintf(stderr, "Error converting hash data to string\n");
         return 1;
     }
 

@@ -517,7 +517,7 @@ int get_data_hashes(sqlite3 *db, char hashes[][41]) {
                         strcpy(column_name, sqlite3_column_name(stmt, i));
 
                         if (strcmp(column_name, "hash") == 0) {
-                            memset(hashes, '\0', 41);
+                            memset(hashes[x], '\0', 41);
                             strcpy(hashes[x], (const char *)sqlite3_column_text(stmt, i));
                             x++;
                         }
