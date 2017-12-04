@@ -30,11 +30,17 @@ int get_map_plan(sqlite3 *db,
 
         // If row doesn't have enough free space don't use it.
         if (remaining <= 0) {
+            if (row.free_locations) {
+                json_object_put(row.free_locations);
+            }
             break;
         }
 
         // If row is empty
         if (row.free_space <= 0) {
+            if (row.free_locations) {
+                json_object_put(row.free_locations);
+            }
             continue;
         }
         remaining -= prepare_store_positions(f,

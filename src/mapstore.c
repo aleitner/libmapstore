@@ -261,8 +261,8 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, char *hash) {
     }
 
 end_store_data:
-    if (map_plan) {
-        json_object_put(map_plan);
+    if (all_data_locations) {
+        json_object_put(all_data_locations);
     }
     return status;
 }
