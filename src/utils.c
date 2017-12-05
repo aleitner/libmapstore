@@ -304,8 +304,8 @@ uint64_t prepare_store_positions(uint64_t store_id, json_object *free_locations_
     uint64_t old_final, new_final;       // free location end for array
     uint64_t total_used = 0;
     uint64_t remaining = data_size;
-    char store_id_str[BUFSIZ];
-    memset(store_id_str, '\0', BUFSIZ);
+    char store_id_str[MAX_UINT64_STR + 1];
+    memset(store_id_str, '\0', MAX_UINT64_STR + 1);
     sprintf(store_id_str, "%"PRIu64, store_id);
 
     // Get previously added store_positions

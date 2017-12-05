@@ -5,7 +5,8 @@ int get_map_plan(sqlite3 *db,
                         uint64_t data_size,
                         json_object *map_coordinates) {
     int status = 0;
-    char where[BUFSIZ];
+    int where_len = 31 + MAX_UINT64_STR + MAX_UINT64_STR + 1;
+    char where[where_len];
 
     // Determine space available 1:
     uint64_t total_free_space = 0;
@@ -20,7 +21,7 @@ int get_map_plan(sqlite3 *db,
 
     for (uint64_t f = 1; f <= total_stores; f++) {
         uint64_t min = (remaining > sector_min(data_size)) ? sector_min(data_size) : remaining;
-        memset(where, '\0', BUFSIZ);
+        memset(where, '\0', where_len);
         sprintf(where, "WHERE Id = %"PRIu64" AND free_space > %"PRIu64, f, min);
 
         if (get_store_rows(db, where, &row) != 0) {
@@ -64,7 +65,7 @@ end_map_plan:
 
 int get_updated_free_locations(sqlite3 *db, json_object *positions, json_object **updated_positions) {
     int status = 0;
-    char where[BUFSIZ];
+    char where[11 + MAX_UINT64_STR + 1];
     mapstore_row row;
     json_object *location_array = NULL;
     int arr_i = 0;
@@ -78,7 +79,7 @@ int get_updated_free_locations(sqlite3 *db, json_object *positions, json_object 
     *updated_positions = json_object_new_object();
 
     json_object_object_foreach(positions, store_id, pos) {
-        memset(where, '\0', BUFSIZ);
+        memset(where, '\0', 11 + MAX_UINT64_STR + 1);
         sprintf(where, "WHERE Id = %s", store_id);
 
         if (get_store_rows(db, where, &row) != 0) {

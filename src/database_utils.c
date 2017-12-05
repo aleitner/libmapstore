@@ -53,7 +53,6 @@ end_prepare_tables:
 int get_latest_layout_row(sqlite3 *db, mapstore_layout_row *row) {
     int status = 0;
     int rc;
-    char query[BUFSIZ];
     char column_name[BUFSIZ];
     sqlite3_stmt *stmt = NULL;
 
@@ -61,9 +60,8 @@ int get_latest_layout_row(sqlite3 *db, mapstore_layout_row *row) {
     row->allocation_size = 0;
     row->map_size = 0;
 
-    memset(query, '\0', BUFSIZ);
-    sprintf(query, "SELECT * FROM `mapstore_layout` ORDER BY Id DESC LIMIT 1");
-    if ((rc = sqlite3_prepare_v2(db, query, BUFSIZ, &stmt, 0)) != SQLITE_OK) {
+    char *query = "SELECT * FROM `mapstore_layout` ORDER BY Id DESC LIMIT 1";
+    if ((rc = sqlite3_prepare_v2(db, query, strlen(query), &stmt, 0)) != SQLITE_OK) {
         fprintf(stderr, "sql error: %s\n", sqlite3_errmsg(db));
         status = 1;
         goto end_mapstore_layout_row;
@@ -110,7 +108,8 @@ end_mapstore_layout_row:
 int get_store_rows(sqlite3 *db, char *where, mapstore_row *row) {
     int status = 0;
     int rc;
-    char query[BUFSIZ];
+    int len = 35 + strlen(where) + 1;
+    char query[len];
     char column_name[BUFSIZ];
     sqlite3_stmt *stmt = NULL;
 
@@ -119,7 +118,7 @@ int get_store_rows(sqlite3 *db, char *where, mapstore_row *row) {
     row->size = 0;
     row->free_locations = NULL;
 
-    memset(query, '\0', BUFSIZ);
+    memset(query, '\0', len);
     sprintf(query, "SELECT * FROM `map_stores` %s LIMIT 1", where);
     if ((rc = sqlite3_prepare_v2(db, query, strlen(query), &stmt, 0)) != SQLITE_OK) {
         fprintf(stderr, "sql error: %s\n", sqlite3_errmsg(db));
@@ -172,7 +171,8 @@ end_mapstore_row:
 int get_data_locations_row(sqlite3 *db, char *hash, data_locations_row *row) {
     int status = 0;
     int rc;
-    char query[BUFSIZ];
+    int len = 69 + HASH_LENGTH + 1;
+    char query[len];
     char column_name[BUFSIZ];
     sqlite3_stmt *stmt = NULL;
 
@@ -182,7 +182,7 @@ int get_data_locations_row(sqlite3 *db, char *hash, data_locations_row *row) {
     row->positions = NULL;
     row->uploaded = false;
 
-    memset(query, '\0', BUFSIZ);
+    memset(query, '\0', len);
     sprintf(query, "SELECT * FROM `data_locations` WHERE hash='%s' ORDER BY Id DESC LIMIT 1", hash);
     if ((rc = sqlite3_prepare_v2(db, query, strlen(query), &stmt, 0)) != SQLITE_OK) {
         fprintf(stderr, "sql error: %s\n", sqlite3_errmsg(db));
@@ -239,12 +239,13 @@ end_data_locations_row:
 int sum_column_for_table(sqlite3 *db, char *column, char *table, uint64_t *sum) {
     int status = 0;
     int rc;
-    char query[BUFSIZ];
+    int len = strlen(column) + strlen(table) + 19 + 1;
+    char query[len];
     sqlite3_stmt *stmt = NULL;
 
-    memset(query, '\0', BUFSIZ);
+    memset(query, '\0', len);
     sprintf(query, "SELECT SUM(%s) FROM %s;", column, table);
-    if ((rc = sqlite3_prepare_v2(db, query, BUFSIZ, &stmt, 0)) != SQLITE_OK) {
+    if ((rc = sqlite3_prepare_v2(db, query, strlen(query), &stmt, 0)) != SQLITE_OK) {
         fprintf(stderr, "sql error: %s\n", sqlite3_errmsg(db));
         status = 1;
         goto end_mapstore_row;
@@ -274,9 +275,10 @@ end_mapstore_row:
 int update_map_store(sqlite3 *db, char *where, char *set) {
     int status = 0;
     char *err_msg = NULL;
+    int len = strlen(where) + strlen(set) + 29 + 1;
 
-    char query[BUFSIZ];
-    memset(query, '\0', BUFSIZ);
+    char query[len];
+    memset(query, '\0', len);
     sprintf(query, "UPDATE `map_stores` %s %s LIMIT 1", set, where);
 
     if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
@@ -293,7 +295,7 @@ int update_map_store(sqlite3 *db, char *where, char *set) {
 int insert_to(sqlite3 *db, char *table, char *set) {
     int status = 0;
     char *err_msg = NULL;
-    int len = strlen(table) + strlen(set) + 16;
+    int len = strlen(table) + strlen(set) + 15 + 1;
 
     char query[len];
     memset(query, '\0', len);
@@ -312,13 +314,14 @@ int insert_to(sqlite3 *db, char *table, char *set) {
 int hash_exists_in_mapstore(sqlite3 *db, char *hash) {
     int status = 0;
     int rc;
-    char query[BUFSIZ];
+    int len = 52 + HASH_LENGTH + 1;
+    char query[len];
     char column_name[BUFSIZ];
     sqlite3_stmt *stmt = NULL;
 
-    memset(query, '\0', BUFSIZ);
+    memset(query, '\0', len);
     sprintf(query, "SELECT * FROM `data_locations` WHERE hash='%s' LIMIT 1", hash);
-    if ((rc = sqlite3_prepare_v2(db, query, BUFSIZ, &stmt, 0)) != SQLITE_OK) {
+    if ((rc = sqlite3_prepare_v2(db, query, strlen(query), &stmt, 0)) != SQLITE_OK) {
         fprintf(stderr, "sql error: %s\n", sqlite3_errmsg(db));
         status = 1;
         goto end_mapstore_row;
@@ -360,8 +363,9 @@ int mark_as_uploaded(sqlite3 *db, char *hash) {
     int status = 0;
     char *err_msg = NULL;
 
-    char query[BUFSIZ];
-    memset(query, '\0', BUFSIZ);
+    int len = 57 + HASH_LENGTH + 1;
+    char query[len];
+    memset(query, '\0', len);
     sprintf(query, "UPDATE `data_locations` SET uploaded='true' WHERE hash='%s'", hash);
 
     if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
@@ -377,13 +381,14 @@ int mark_as_uploaded(sqlite3 *db, char *hash) {
 int get_pos_from_data_locations(sqlite3 *db, char *hash, json_object **positions) {
     int status = 1;
     int rc;
-    char query[BUFSIZ];
+    int len = 52 + HASH_LENGTH + 1;
+    char query[len];
     char column_name[BUFSIZ];
     sqlite3_stmt *stmt = NULL;
 
-    memset(query, '\0', BUFSIZ);
+    memset(query, '\0', len);
     sprintf(query, "SELECT * FROM `data_locations` WHERE hash='%s' LIMIT 1", hash);
-    if ((rc = sqlite3_prepare_v2(db, query, BUFSIZ, &stmt, 0)) != SQLITE_OK) {
+    if ((rc = sqlite3_prepare_v2(db, query, strlen(query), &stmt, 0)) != SQLITE_OK) {
         fprintf(stderr, "sql error: %s\n", sqlite3_errmsg(db));
         status = 1;
         goto end_mapstore_row;
@@ -424,8 +429,9 @@ int delete_by_hash_from_data_locations(sqlite3 *db, char *hash) {
     int status = 0;
     char *err_msg = NULL;
 
-    char query[BUFSIZ];
-    memset(query, '\0', BUFSIZ);
+    int len = 42 + HASH_LENGTH + 1;
+    char query[len];
+    memset(query, '\0', len);
     sprintf(query, "DELETE FROM `data_locations` WHERE hash='%s'", hash);
 
     if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
@@ -442,8 +448,9 @@ int delete_by_id_from_map_stores(sqlite3 *db, uint64_t id) {
     int status = 0;
     char *err_msg = NULL;
 
-    char query[BUFSIZ];
-    memset(query, '\0', BUFSIZ);
+    int len = 34 + MAX_UINT64_STR + 1;
+    char query[len];
+    memset(query, '\0', len);
     sprintf(query, "DELETE FROM `map_stores` WHERE Id=%"PRIu64, id);
 
     if(sqlite3_exec(db, query, 0, 0, &err_msg) != SQLITE_OK) {
@@ -498,7 +505,7 @@ int get_data_hashes(sqlite3 *db, char hashes[][41]) {
     char *query = "SELECT * FROM `data_locations`;";
     int x = 0;
 
-    if ((rc = sqlite3_prepare_v2(db, query, BUFSIZ, &stmt, 0)) != SQLITE_OK) {
+    if ((rc = sqlite3_prepare_v2(db, query, strlen(query), &stmt, 0)) != SQLITE_OK) {
         fprintf(stderr, "sql error: %s\n", sqlite3_errmsg(db));
     } else while((rc = sqlite3_step(stmt)) != SQLITE_DONE) {
         switch(rc) {

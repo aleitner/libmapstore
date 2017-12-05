@@ -313,8 +313,8 @@ MAPSTORE_API int delete_data(mapstore_ctx *ctx, char *hash) {
     json_object *updated_positions = NULL;
     json_object *free_pos_obj = NULL;
     json_object *free_space_obj = NULL;
-    char where[BUFSIZ];
-    char set[BUFSIZ];
+    char where[9 + MAX_UINT64_STR + 1];
+    char *set = NULL;
 
     // get data map
     if ((status = get_pos_from_data_locations(ctx->db, hash, &positions)) != 0) {
@@ -333,8 +333,11 @@ MAPSTORE_API int delete_data(mapstore_ctx *ctx, char *hash) {
     json_object_object_foreach(updated_positions, store_id, store_meta) {
         json_object_object_get_ex(store_meta, "free_positions", &free_pos_obj);
         json_object_object_get_ex(store_meta, "free_space", &free_space_obj);
-        memset(where, '\0', BUFSIZ);
-        memset(set, '\0', BUFSIZ);
+        memset(where, '\0', 9 + MAX_UINT64_STR + 1);
+        if (set) {
+            free(set);
+        }
+        set = calloc(38 + strlen(json_object_to_json_string(free_pos_obj)) + MAX_UINT64_STR + 1, sizeof(char));
         sprintf(where, "WHERE Id=%s", store_id);
         sprintf(set,
                 "SET free_space = %"PRIu64", free_locations = '%s'",
@@ -354,6 +357,10 @@ MAPSTORE_API int delete_data(mapstore_ctx *ctx, char *hash) {
     }
 
 end_delete_data:
+    if (set) {
+        free(set);
+    }
+
     if (positions) {
         json_object_put(positions);
     }
