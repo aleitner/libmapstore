@@ -400,7 +400,12 @@ int write_to_store(int data_fd, char *store_dir, json_object *data_locations) {
             do {
                 memset(buf, '\0', BUFSIZ);
                 bytes_to_read = ((sector_size - total_written_for_sector) > BUFSIZ) ? BUFSIZ : sector_size - total_written_for_sector;
-                bytes_read = pread(data_fd, buf, bytes_to_read, total_written_to_file);
+
+                if (data_fd == STDIN_FILENO) {
+                    bytes_read = read(data_fd, buf, bytes_to_read);
+                } else {
+                    bytes_read = pread(data_fd, buf, bytes_to_read, total_written_to_file);
+                }
 
                 bytes_written = pwrite(fileno(mapstore), buf, bytes_read, total_written_for_sector + first);
 
@@ -463,7 +468,7 @@ int read_from_store(int output_fd, char *store_dir, json_object *data_locations)
                 bytes_read = pread(fileno(mapstore), buf, bytes_to_read, first + total_written_for_sector);
 
                 if (output_fd == STDOUT_FILENO) {
-                    // Data could be out of order here...
+                    // TODO: Data could be out of order here...
                     bytes_written = write(output_fd, buf, bytes_read);
                 } else {
                     bytes_written = pwrite(output_fd, buf, bytes_read, position + total_written_for_sector);
@@ -503,6 +508,7 @@ json_object *combine_positions(json_object *locations, uint64_t *freespace) {
         coords[arr_i + 1]  = json_object_get_int64(json_object_array_get_idx(location_array, 1));
     }
 
+    // TODO: Combines but doesn't sort
     while (i < coordinate_count) {
         // Starts out as false.
         // Set changed to true when we modify the current coordinates.

@@ -432,6 +432,7 @@ MAPSTORE_API int restructure(mapstore_ctx *ctx, uint64_t map_size, uint64_t allo
                 perror("retrieve_data dup failed");
                 exit(1);
             }
+
             close(des_p[0]);       //closing pipe read
             close(des_p[1]);
             if ((status = retrieve_data(ctx, STDOUT_FILENO, hashes[i])) != 0) {

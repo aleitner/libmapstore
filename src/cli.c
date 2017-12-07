@@ -185,7 +185,7 @@ end_store:
     }
 
     if (strcmp(command, "retrieve") == 0) {
-        fprintf(stdout, "Retrieving data\n\n");
+        fprintf(stderr, "Retrieving data\n\n");
         char *data_hash = argv[command_index + 1];
         char *retrieval_path = argv[command_index + 2];
         FILE *retrieval_file = NULL;
@@ -214,7 +214,7 @@ end_store:
             goto end_retrieve;
         }
 
-        fprintf(stdout, "Successfully retrieved data: %s\n", data_hash);
+        fprintf(stderr, "Successfully retrieved data: %s\n", data_hash);
 
 end_retrieve:
         if (retrieval_file) {
@@ -260,7 +260,7 @@ end_retrieve:
             goto end_program;
         }
 
-        fprintf(stdout, "Successfully stored data: %s\n", data_hash);
+        fprintf(stderr, "Successfully stored data: %s\n", data_hash);
         goto end_program;
     }
 
