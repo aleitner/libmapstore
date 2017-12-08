@@ -427,34 +427,23 @@ MAPSTORE_API int restructure(mapstore_ctx *ctx, uint64_t map_size, uint64_t allo
         }
 
         if(fork() == 0) {
-            close(STDOUT_FILENO);  //closing stdout
-            if (dup(des_p[1]) < 0) { //replacing stdout with pipe write
-                perror("retrieve_data dup failed");
-                exit(1);
-            }
-
             close(des_p[0]);       //closing pipe read
             close(des_p[1]);
-            if ((status = retrieve_data(ctx, STDOUT_FILENO, hashes[i])) != 0) {
-                goto end_restructure;
+            if ((status = retrieve_data(ctx, des_p[1], hashes[i])) != 0) {
+                perror("retrieve_data failed");
+                exit(1);
             }
-            perror("retrieve_data failed");
-            exit(1);
+            exit(0);
         }
 
         if(fork() == 0) {
-            close(STDIN_FILENO);   //closing stdin
-            if (dup(des_p[0]) < 0) { //replacing stdout with pipe read
-                perror("store_data dup failed");
-                exit(1);
-            }
             close(des_p[1]);       //closing pipe write
             close(des_p[0]);
-            if ((status = store_data(&new_ctx, STDIN_FILENO, hashes[i])) != 0) {
-                goto end_restructure;
+            if ((status = store_data(&new_ctx, des_p[0], hashes[i])) != 0) {
+                perror("store_data failed");
+                exit(1);
             }
-            perror("store_data failed");
-            exit(1);
+            exit(0);
         }
 
         close(des_p[0]);
