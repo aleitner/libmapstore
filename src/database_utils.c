@@ -99,9 +99,8 @@ int get_latest_layout_row(sqlite3 *db, mapstore_layout_row *row) {
         }
     }
 
-    sqlite3_finalize(stmt);
-
 end_mapstore_layout_row:
+    sqlite3_finalize(stmt);
     return status;
 }
 
@@ -162,9 +161,8 @@ int get_store_rows(sqlite3 *db, char *where, mapstore_row *row) {
         }
     }
 
-    sqlite3_finalize(stmt);
-
 end_mapstore_row:
+    sqlite3_finalize(stmt);
     return status;
 }
 
@@ -230,9 +228,8 @@ int get_data_locations_row(sqlite3 *db, char *hash, data_locations_row *row) {
         }
     }
 
-    sqlite3_finalize(stmt);
-
 end_data_locations_row:
+    sqlite3_finalize(stmt);
     return status;
 }
 
@@ -266,9 +263,8 @@ int sum_column_for_table(sqlite3 *db, char *column, char *table, uint64_t *sum) 
         }
     }
 
-    sqlite3_finalize(stmt);
-
 end_mapstore_row:
+    sqlite3_finalize(stmt);
     return status;
 }
 
@@ -335,6 +331,10 @@ int hash_exists_in_mapstore(sqlite3 *db, char *hash) {
                 fprintf(stderr, "step error: %s\n", sqlite3_errmsg(db));
                 status = 1;
                 goto end_mapstore_row;
+            case SQLITE_IOERR:
+                fprintf(stderr, "step error: %s\n", sqlite3_errmsg(db));
+                status = 1;
+                goto end_mapstore_row;
             case SQLITE_ROW:
                 {
                     int n = sqlite3_column_count(stmt);
@@ -353,9 +353,8 @@ int hash_exists_in_mapstore(sqlite3 *db, char *hash) {
         }
     }
 
-    sqlite3_finalize(stmt);
-
 end_mapstore_row:
+    sqlite3_finalize(stmt);
     return status;
 }
 
@@ -419,9 +418,8 @@ int get_pos_from_data_locations(sqlite3 *db, char *hash, json_object **positions
         }
     }
 
-    sqlite3_finalize(stmt);
-
 end_mapstore_row:
+    sqlite3_finalize(stmt);
     return status;
 }
 
@@ -478,6 +476,7 @@ int get_count(sqlite3 *db, char *query) {
                 break;
             case SQLITE_ERROR:
                 fprintf(stderr, "step error: %s\n", sqlite3_errmsg(db));
+                sqlite3_finalize(stmt);
                 return 0;
             case SQLITE_ROW:
                 {
@@ -488,13 +487,16 @@ int get_count(sqlite3 *db, char *query) {
                         strcpy(column_name, sqlite3_column_name(stmt, i));
 
                         if (strcmp(column_name, "count(*)") == 0) {
-                            return sqlite3_column_int64(stmt, i);
+                            uint64_t count = sqlite3_column_int64(stmt, i);
+                            sqlite3_finalize(stmt);
+                            return count;
                         }
                     }
                 }
         }
     }
 
+    sqlite3_finalize(stmt);
     return 0;
 }
 
@@ -515,6 +517,7 @@ int get_data_hashes(sqlite3 *db, char hashes[][41]) {
                 break;
             case SQLITE_ERROR:
                 fprintf(stderr, "step error: %s\n", sqlite3_errmsg(db));
+                sqlite3_finalize(stmt);
                 return 0;
             case SQLITE_ROW:
                 {
@@ -534,5 +537,6 @@ int get_data_hashes(sqlite3 *db, char hashes[][41]) {
         }
     }
 
+    sqlite3_finalize(stmt);
     return 0;
 }
