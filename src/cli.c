@@ -158,7 +158,7 @@ int main (int argc, char **argv)
                 fprintf(stderr, "Failed to get data hash: %s\n", data_path);
                 status = 1;
             } else {
-                if ((ret = store_data(&ctx, fileno(data_file), data_hash)) != 0) {
+                if ((ret = store_data(&ctx, fileno(data_file), 0, data_hash)) != 0) {
                     fprintf(stderr, "Failed to store data: %s\n", data_hash);
                     status = 1;
                 }
@@ -246,6 +246,7 @@ end_retrieve:
 
     if (strcmp(command, "stream") == 0) {
         char *data_hash = argv[command_index + 1];
+        uint64_t data_size = (argv[command_index + 2]) ? strtoull(argv[command_index + 2], NULL, 10) : 0;
 
         if (data_hash == NULL) {
             fprintf(stderr, "Missing data hash\n");
@@ -254,7 +255,7 @@ end_retrieve:
             goto end_program;
         }
 
-        if (store_data(&ctx, STDIN_FILENO, data_hash) != 0) {
+        if (store_data(&ctx, STDIN_FILENO, data_size, data_hash) != 0) {
             fprintf(stderr, "Failed to store data: %s\n", data_hash);
             status = 1;
             goto end_program;

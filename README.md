@@ -78,7 +78,7 @@ Example:
 #### Store Data
 
 ```C
-int store_data(mapstore_ctx *ctx, int fd, char *hash);
+int store_data(mapstore_ctx *ctx, int fd, uint64_t data_size, char *hash);
 ```
 
 Example:
@@ -92,7 +92,7 @@ Example:
       return 1;
   }
 
-  if (store_data(&ctx, fileno(data_file), data_hash) != 0) {
+  if (store_data(&ctx, fileno(data_file), 0, data_hash) != 0) {
       printf("Failed to store data: %s\n", data_hash);
       return 1;
   }

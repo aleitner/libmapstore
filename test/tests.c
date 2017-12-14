@@ -256,7 +256,7 @@ void test_store_data() {
 
     memset(test_case, '\0', BUFSIZ);
     sprintf(test_case, "%s: Should successfully store data", __func__);
-    if ((store_data(&ctx, fileno(data), data_hash)) != 0) {
+    if ((store_data(&ctx, fileno(data), 0, data_hash)) != 0) {
         test_fail(test_case, NULL, NULL);
     }
 
@@ -325,7 +325,7 @@ void test_store_data() {
 
     memset(test_case, '\0', BUFSIZ);
     sprintf(test_case, "%s: Should fail to store data with same hash", __func__);
-    if ((store_data(&ctx, fileno(data), data_hash)) != 0) {
+    if ((store_data(&ctx, fileno(data), 0, data_hash)) != 0) {
         test_pass(test_case);
     } else {
         test_fail(test_case, NULL, NULL);
