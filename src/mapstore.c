@@ -56,7 +56,7 @@ MAPSTORE_API int initialize_mapstore(mapstore_ctx *ctx, mapstore_opts opts) {
     if (sqlite3_open_v2(
         ctx->database_path,
         &db,
-        SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
+        SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_SHAREDCACHE | SQLITE_OPEN_FULLMUTEX,
         NULL) != SQLITE_OK) {
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
         status = 1;
@@ -186,7 +186,7 @@ end_initalize:
 /**
 * Store data
 */
-MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, char *hash) {
+MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint64_t data_size, char *hash) {
     int status = 0;
     json_object *map_plan = json_object_new_object();
     char where[BUFSIZ];
@@ -202,7 +202,9 @@ MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, char *hash) {
         goto end_store_data;
     }
 
-    uint64_t data_size = get_file_size(fd);
+    if (data_size == 0) {
+        data_size = get_file_size(fd);
+    }
     if (data_size <= 0) {
         status = 1;
         goto end_store_data;
@@ -439,7 +441,7 @@ MAPSTORE_API int restructure(mapstore_ctx *ctx, uint64_t map_size, uint64_t allo
         if(fork() == 0) {
             close(des_p[1]);       //closing pipe write
             close(des_p[0]);
-            if ((status = store_data(&new_ctx, des_p[0], hashes[i])) != 0) {
+            if ((status = store_data(&new_ctx, des_p[0], 0, hashes[i])) != 0) {
                 perror("store_data failed");
                 exit(1);
             }

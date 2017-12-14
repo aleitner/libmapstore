@@ -75,7 +75,7 @@ typedef struct  {
   uint64_t total_mapstores;
 } store_info;
 
-MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, char *hash);
+MAPSTORE_API int store_data(mapstore_ctx *ctx, int fd, uint64_t data_size, char *hash);
 MAPSTORE_API int retrieve_data(mapstore_ctx *ctx, int fd, char *hash);
 MAPSTORE_API int delete_data(mapstore_ctx *ctx, char *hash);
 MAPSTORE_API int get_data_info(mapstore_ctx *ctx, char *hash, data_info *info);
